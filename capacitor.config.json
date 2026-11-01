@@ -1,0 +1,12 @@
+{
+  "appId": "net.pigeon.nav",
+  "appName": "Pigeon",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "Geolocation": {},
+    "Camera": {}
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+# Native projects are generated in CI by `npx cap add`
+android/
+ios/
+# Build outputs
+dist-win/
+out/
+build/
+Payload/
+*.ipa
+*.apk
+*.exe
+# misc
+.DS_Store
+*.log
+npm-debug.log*

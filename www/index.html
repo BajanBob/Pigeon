@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Pigeon — Navigation</title>
+<style>/* leaflet 1.9.4 */
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+
+</style>
+<style>
+  :root{
+    --bg:#0b1016; --card:#121b24; --line:#223040; --fg:#e8f1f8; --muted:#8aa0b2;
+    --accent:#36c4ff; --go:#2bd47a; --warn:#ffb547; --ink:#061016;
+    --mono:ui-monospace,"Share Tech Mono",Menlo,Consolas,monospace;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  /* Night theme = dimmer; Red theme = red-on-black to protect night vision */
+  :root[data-theme="night"]{ --bg:#05080b; --card:#0a1119; --line:#16222e; --fg:#b9ccda; --muted:#5e7488; --accent:#2a93c4; }
+  :root[data-theme="red"]{ --bg:#0a0000; --card:#160303; --line:#3a0d0d; --fg:#ff4d4d; --muted:#b23b3b; --accent:#ff6a6a; --go:#ff5555; --warn:#ff8a8a; }
+  :root[data-theme="red"] .map-wrap{ filter:grayscale(1) brightness(.5) sepia(1) hue-rotate(-50deg) saturate(4); }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.45;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:500}
+  .logo{font-size:26px}
+  .top h1{margin:0;font-size:20px;letter-spacing:.02em}
+  .top .sub{margin:0;color:var(--muted);font-size:12px}
+  .theme{margin-left:auto;display:flex;gap:6px}
+  .tbtn{font:600 12px var(--body);border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:6px 11px;cursor:pointer}
+  .tbtn.on{border-color:var(--accent);color:var(--accent)}
+  #t-video.on,#t-audio.on{border-color:var(--accent);color:var(--accent);font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
+  main{max-width:720px;margin:0 auto;padding:14px 16px 40px;display:grid;gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+  .card h2{margin:0 0 10px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .stat .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{font-family:var(--mono);font-size:20px;color:var(--fg);margin-top:3px;overflow-wrap:anywhere}
+  .stat .v small{font-size:12px;color:var(--muted)}
+  .big{font-family:var(--mono);font-size:26px}
+  /* compass */
+  .compass-wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center}
+  .compass{width:200px;height:200px;flex:none}
+  .cinfo{flex:1;min-width:180px;display:grid;gap:8px}
+  /* destination input */
+  .in{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:10px 12px;font:16px var(--mono)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .btn{appearance:none;border:1px solid var(--line);background:#16222e;color:var(--fg);border-radius:10px;padding:10px 14px;font:600 14px var(--body);cursor:pointer}
+  .btn.go{background:var(--accent);color:var(--ink);border-color:transparent}
+  .btn.sm{padding:7px 11px;font-size:13px}
+  .map-wrap{height:340px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+  #map{height:100%;background:#0a1119}
+  .leaflet-container{background:#0a1119;font-family:var(--body)}
+  .layers{display:flex;gap:6px;margin-bottom:8px}
+  .layers button{flex:1;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:9px;padding:7px;font:600 13px var(--body);cursor:pointer}
+  .layers button.on{border-color:var(--accent);color:var(--accent)}
+  .lmk{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .lmk .b{font-family:var(--mono);color:var(--accent);min-width:88px}
+  .muted{color:var(--muted)} .small{font-size:12.5px}
+  .foot{color:var(--muted);font-size:12px;text-align:center;padding:4px 0 10px}
+  .warn{background:#2a2410;border:1px solid #4a3c12;color:var(--warn);border-radius:10px;padding:8px 11px;font-size:13px}
+  :root[data-theme="red"] .warn{background:#1a0505;border-color:#4a1010;color:var(--warn)}
+</style>
+</head>
+<body>
+  <div class="top">
+    <span class="logo">🕊️</span>
+    <div><h1>Pigeon</h1><p class="sub">Geographic location awareness</p></div>
+    <div class="theme" id="theme">
+      <button class="tbtn on" data-t="day">Day</button>
+      <button class="tbtn" data-t="night">Night</button>
+      <button class="tbtn" data-t="red">Red</button>
+    </div>
+  </div>
+
+  <main>
+    <div id="gps-warn" class="warn" hidden>Waiting for a location fix… allow location access, and go outdoors for the first fix.</div>
+
+    <section class="card">
+      <h2>Where you are</h2>
+      <div class="grid2">
+        <div class="stat"><div class="k">Latitude</div><div class="v" id="lat">—</div></div>
+        <div class="stat"><div class="k">Longitude</div><div class="v" id="lon">—</div></div>
+        <div class="stat"><div class="k">Grid square</div><div class="v" id="grid">—</div></div>
+        <div class="stat"><div class="k">Height (ASL)</div><div class="v" id="alt">—</div></div>
+        <div class="stat"><div class="k">Speed</div><div class="v" id="spd">—</div></div>
+        <div class="stat"><div class="k">Accuracy</div><div class="v" id="acc">—</div></div>
+      </div>
+      <p class="small muted" id="fix-src" style="margin:8px 0 0"></p>
+    </section>
+
+    <section class="card">
+      <h2>Destination &amp; bearing</h2>
+      <input class="in" id="dest" placeholder="Grid (GK03fd) or  lat,lon  (13.10,-59.60)" autocomplete="off" spellcheck="false">
+      <div class="row">
+        <button class="btn go sm" id="set-dest">Set destination</button>
+        <button class="btn sm" id="pick">Tap map to pick</button>
+        <button class="btn sm" id="clear-dest">Clear</button>
+      </div>
+      <div class="compass-wrap" style="margin-top:14px">
+        <svg class="compass" viewBox="0 0 200 200" id="compass" aria-hidden="true">
+          <circle cx="100" cy="100" r="94" fill="none" stroke="var(--line)" stroke-width="2"/>
+          <g id="dial">
+            <text x="100" y="22" text-anchor="middle" fill="var(--muted)" font-size="13" font-family="var(--mono)">N</text>
+            <text x="183" y="105" text-anchor="middle" fill="var(--muted)" font-size="13" font-family="var(--mono)">E</text>
+            <text x="100" y="192" text-anchor="middle" fill="var(--muted)" font-size="13" font-family="var(--mono)">S</text>
+            <text x="17" y="105" text-anchor="middle" fill="var(--muted)" font-size="13" font-family="var(--mono)">W</text>
+            <line x1="100" y1="12" x2="100" y2="30" stroke="var(--muted)" stroke-width="2"/>
+          </g>
+          <polygon id="needle" points="100,34 90,110 100,96 110,110" fill="var(--warn)" opacity=".55"/>
+          <polygon id="arrow" points="100,30 86,120 100,104 114,120" fill="var(--accent)"/>
+          <circle cx="100" cy="100" r="6" fill="var(--fg)"/>
+        </svg>
+        <div class="cinfo">
+          <div class="stat"><div class="k">Bearing / azimuth to destination</div><div class="v big" id="brg">—</div></div>
+          <div class="stat"><div class="k">Distance</div><div class="v" id="distv">—</div></div>
+          <div class="stat"><div class="k">ETA at current speed</div><div class="v" id="eta">—</div></div>
+          <div class="stat"><div class="k">Your heading (compass)</div><div class="v" id="hdg">—</div></div>
+        </div>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">Orange = where North is as you turn the phone. Blue arrow = point this way to reach the destination. Tap once to enable the compass if it's still.</p>
+    </section>
+
+    <section class="card">
+      <h2>Map</h2>
+      <div class="layers">
+        <button data-layer="street" class="on">Street</button>
+        <button data-layer="terrain">Terrain</button>
+      </div>
+      <div class="map-wrap"><div id="map"></div></div>
+    </section>
+
+    <section class="card">
+      <h2>Nearby landmarks</h2>
+      <div id="landmarks"><p class="muted small">Finding places near you…</p></div>
+    </section>
+
+    <section class="card" id="share-card">
+      <h2>Share my location — live &amp; encrypted</h2>
+      <p class="small muted">Make a private link and send it to one person; they just tap <strong>Accept</strong> to see you on the map. You choose whether to add a <strong>live video</strong> or <strong>audio</strong> feed, and you can turn them off or <strong>stop sharing</strong> whenever you want. Everything goes <strong>phone-to-phone</strong>, end-to-end <strong>AES-256</strong> encrypted — the relay only helps the two phones find each other and can't read anything.</p>
+      <div class="row" id="relay-row">
+        <input class="in" id="relay-url" placeholder="Relay URL  https://pigeon-relay.you.workers.dev" style="font-size:13px">
+        <button class="btn sm" id="relay-save">Save relay</button>
+      </div>
+      <div class="row"><label class="btn sm" for="share-photo">📷 Add my photo (optional)</label><input type="file" id="share-photo" accept="image/*" style="display:none"><span class="small muted" id="photo-state" style="align-self:center"></span></div>
+      <div class="row">
+        <button class="btn go sm" id="share-loc">Share location</button>
+        <button class="btn sm" id="t-video" aria-pressed="false">📹 Video feed</button>
+        <button class="btn sm" id="t-audio" aria-pressed="false">🎙️ Audio feed</button>
+        <button class="btn sm" id="share-stop" hidden>⏹ Stop sharing</button>
+      </div>
+      <p class="small muted" id="feed-hint" style="margin-top:2px">Tap <b>Video feed</b> or <b>Audio feed</b> to include them — before or during a share. You can turn each off or stop sharing entirely at any time.</p>
+      <div id="share-box" hidden>
+        <div class="stat" style="margin-top:10px"><div class="k">Your private link — send it to one person</div><div class="v" id="share-link" style="font-size:12px;overflow-wrap:anywhere"></div></div>
+        <div class="row"><button class="btn sm" id="share-copy">Copy link</button></div>
+        <div id="share-reqs" style="margin-top:8px"></div>
+        <p class="small muted" id="share-state"></p>
+      </div>
+      <div id="view-box" hidden>
+        <p class="big" id="view-title">Viewing a shared location</p>
+        <div class="stat"><div class="k">Their position</div><div class="v" id="view-pos">connecting…</div></div>
+        <div class="stat" style="margin-top:8px"><div class="k">Bearing &amp; distance to them</div><div class="v" id="view-brg">—</div></div>
+        <video id="view-video" playsinline autoplay muted style="width:100%;border-radius:12px;margin-top:10px;display:none;background:#000"></video>
+        <p class="small muted" id="view-state"></p>
+      </div>
+    </section>
+
+    <p class="foot">Pigeon reads your phone's own GNSS fix (GPS + GLONASS + Galileo + BeiDou, chosen by the phone) and sensors. It only reads — it sends nothing anywhere. Not a substitute for official navigation.</p>
+  </main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+// ---------- themes (Day / Night / Red for night vision) ----------
+const savedTheme=(()=>{try{return localStorage.getItem('pigeon-theme')}catch(e){return null}})()||'day';
+function setTheme(t){ document.documentElement.setAttribute('data-theme', t==='day'?'':t||''); if(t==='day')document.documentElement.removeAttribute('data-theme');
+  document.querySelectorAll('#theme .tbtn').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); try{localStorage.setItem('pigeon-theme',t)}catch(e){} }
+document.querySelectorAll('#theme .tbtn').forEach(b=>b.onclick=()=>setTheme(b.dataset.t));
+setTheme(savedTheme);
+
+// ---------- geo math ----------
+const A='ABCDEFGHIJKLMNOPQRSTUVWX';
+function toGrid(lat,lon){ let L=lon+180, B=lat+90;
+  return A[Math.floor(L/20)]+A[Math.floor(B/10)]+Math.floor(L%20/2)+''+Math.floor(B%10)+
+    A.toLowerCase()[Math.floor(L%2*12)]+A.toLowerCase()[Math.floor(B%1*24)]; }
+function gridToLatLon(g){ g=g.trim().toUpperCase(); if(!/^[A-R]{2}[0-9]{2}([A-X]{2})?$/.test(g))return null;
+  let lon=(g.charCodeAt(0)-65)*20-180, lat=(g.charCodeAt(1)-65)*10-90;
+  lon+=(+g[2])*2; lat+=(+g[3]);
+  if(g.length>=6){ lon+=(g.charCodeAt(4)-65)*(2/24)+(1/24); lat+=(g.charCodeAt(5)-65)*(1/24)+(0.5/24); } else { lon+=1; lat+=0.5; }
+  return [lat,lon]; }
+const R=Math.PI/180;
+function bearing(a,b,c,d){ const y=Math.sin((d-b)*R)*Math.cos(c*R), x=Math.cos(a*R)*Math.sin(c*R)-Math.sin(a*R)*Math.cos(c*R)*Math.cos((d-b)*R); return (Math.atan2(y,x)/R+360)%360; }
+function distKm(a,b,c,d){ const h=Math.sin((c-a)*R/2)**2+Math.cos(a*R)*Math.cos(c*R)*Math.sin((d-b)*R/2)**2; return 2*6371*Math.asin(Math.sqrt(h)); }
+const compassName=d=>['N','NE','E','SE','S','SW','W','NW'][Math.round(d/45)%8];
+
+// ---------- state ----------
+let me=null, dest=null, heading=null, pickMode=false;
+
+// ---------- map ----------
+const map=L.map('map',{zoomControl:true}).setView([13.1,-59.6],13);
+const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
+const terrain=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'&copy; OpenTopoMap (CC-BY-SA)'});
+street.addTo(map);
+let meMarker=null, destMarker=null, lineLayer=null;
+document.querySelectorAll('.layers button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.layers button').forEach(x=>x.classList.toggle('on',x===b));
+  if(b.dataset.layer==='street'){ map.removeLayer(terrain); street.addTo(map); } else { map.removeLayer(street); terrain.addTo(map); }
+});
+map.on('click',e=>{ if(pickMode){ setDest(e.latlng.lat,e.latlng.lng); pickMode=false; $('#pick').textContent='Tap map to pick'; }});
+
+// ---------- destination ----------
+function setDest(lat,lon){ dest={lat,lon};
+  if(destMarker)destMarker.setLatLng([lat,lon]); else destMarker=L.marker([lat,lon]).addTo(map).bindTooltip('Destination');
+  $('#dest').value=lat.toFixed(5)+','+lon.toFixed(5); draw(); updateNav(); }
+$('#set-dest').onclick=()=>{ const v=$('#dest').value.trim(); let p=gridToLatLon(v);
+  if(!p){ const m=v.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/); if(m)p=[+m[1],+m[2]]; }
+  if(!p)return alert('Enter a grid square (GK03fd) or coordinates as  lat,lon'); setDest(p[0],p[1]); map.setView([p[0],p[1]],Math.max(map.getZoom(),12)); };
+$('#pick').onclick=()=>{ pickMode=!pickMode; $('#pick').textContent=pickMode?'Tap the map…':'Tap map to pick'; };
+$('#clear-dest').onclick=()=>{ dest=null; if(destMarker){map.removeLayer(destMarker);destMarker=null;} if(lineLayer){map.removeLayer(lineLayer);lineLayer=null;} $('#dest').value=''; ['brg','distv','eta'].forEach(id=>$('#'+id).textContent='—'); };
+
+// ---------- position ----------
+function fmtSpeed(mps){ if(mps==null) return '—'; const k=mps*3.6; return k.toFixed(k<10?1:0)+' <small>km/h</small> · '+(mps*1.94384).toFixed(0)+' <small>kn</small>'; }
+function onPos(p){ const c=p.coords; me={lat:c.latitude,lon:c.longitude};
+  $('#gps-warn').hidden=true;
+  $('#lat').textContent=c.latitude.toFixed(5)+'°';
+  $('#lon').textContent=c.longitude.toFixed(5)+'°';
+  $('#grid').textContent=toGrid(c.latitude,c.longitude);
+  $('#alt').innerHTML=c.altitude!=null?Math.round(c.altitude)+' <small>m</small>':'<small>no GPS altitude</small>';
+  $('#spd').innerHTML=fmtSpeed(c.speed);
+  $('#acc').innerHTML='±'+Math.round(c.accuracy)+' <small>m</small>';
+  $('#fix-src').textContent='Fix updated '+new Date().toLocaleTimeString()+(c.altitudeAccuracy?(' · altitude ±'+Math.round(c.altitudeAccuracy)+' m'):'');
+  if(meMarker)meMarker.setLatLng([me.lat,me.lon]); else { meMarker=L.circleMarker([me.lat,me.lon],{radius:8,color:'#fff',weight:2,fillColor:'#36c4ff',fillOpacity:1}).addTo(map).bindTooltip('You'); map.setView([me.lat,me.lon],15); }
+  draw(); updateNav(); loadLandmarksThrottled();
+  if (window.SHARE) window.SHARE.updateLocation({lat:me.lat,lon:me.lon,grid:toGrid(me.lat,me.lon),alt:c.altitude,spd:c.speed,acc:c.accuracy,ts:Date.now()});
+}
+function onPosErr(e){ $('#gps-warn').hidden=false; $('#gps-warn').textContent='Location unavailable: '+e.message+'. Allow location and try outdoors.'; }
+if(navigator.geolocation){ $('#gps-warn').hidden=false; navigator.geolocation.watchPosition(onPos,onPosErr,{enableHighAccuracy:true,maximumAge:2000,timeout:20000}); }
+else $('#gps-warn').textContent='This device has no location support.';
+
+function draw(){ if(me&&dest){ const pts=[[me.lat,me.lon],[dest.lat,dest.lon]];
+  if(lineLayer)lineLayer.setLatLngs(pts); else lineLayer=L.polyline(pts,{color:'#36c4ff',weight:3,dashArray:'6 6',opacity:.8}).addTo(map); } }
+
+function updateNav(){ if(!(me&&dest)) return;
+  const b=bearing(me.lat,me.lon,dest.lat,dest.lon), d=distKm(me.lat,me.lon,dest.lat,dest.lon);
+  $('#brg').textContent=Math.round(b)+'° '+compassName(b);
+  $('#distv').innerHTML=(d<1?Math.round(d*1000)+' <small>m</small>':d.toFixed(d<10?2:1)+' <small>km</small>');
+  // ETA from current speed
+  const spdTxt=$('#spd').textContent, m=spdTxt.match(/([\d.]+)\s*km/); const kmh=m?+m[1]:0;
+  $('#eta').innerHTML = kmh>1 ? fmtEta(d/kmh*3600) : '<small>move to estimate</small>';
+  drawCompass();
+}
+function fmtEta(sec){ if(sec<60)return Math.round(sec)+' <small>s</small>'; const h=Math.floor(sec/3600),mn=Math.round(sec%3600/60); return (h?h+' <small>h</small> ':'')+mn+' <small>min</small>'; }
+
+// ---------- compass (device orientation) ----------
+function drawCompass(){ const hdg=heading==null?0:heading;
+  $('#dial').setAttribute('transform',`rotate(${-hdg} 100 100)`);          // dial + N turn opposite to heading
+  $('#needle').setAttribute('transform',`rotate(${-hdg} 100 100)`);         // orange = North
+  if(me&&dest){ const b=bearing(me.lat,me.lon,dest.lat,dest.lon); $('#arrow').style.display='';
+    $('#arrow').setAttribute('transform',`rotate(${(b-hdg+360)%360} 100 100)`); } else $('#arrow').style.display='none';
+  $('#hdg').textContent = heading==null?'tap to enable':Math.round(hdg)+'° '+compassName(hdg);
+}
+function onOrient(e){ let h=null;
+  if(typeof e.webkitCompassHeading==='number') h=e.webkitCompassHeading;         // iOS: already from North
+  else if(e.absolute&&typeof e.alpha==='number') h=(360-e.alpha)%360;            // Android absolute
+  else if(typeof e.alpha==='number') h=(360-e.alpha)%360;
+  if(h!=null){ heading=h; drawCompass(); }
+}
+function enableCompass(){
+  if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
+    DeviceOrientationEvent.requestPermission().then(s=>{ if(s==='granted'){ window.addEventListener('deviceorientation',onOrient); } }).catch(()=>{});
+  } else { window.addEventListener('deviceorientationabsolute',onOrient,true); window.addEventListener('deviceorientation',onOrient,true); }
+}
+document.body.addEventListener('click',enableCompass,{once:true});
+window.addEventListener('deviceorientationabsolute',onOrient,true);
+
+// ---------- nearby landmarks (OpenStreetMap / Overpass) ----------
+let lmkT=0;
+function loadLandmarksThrottled(){ const now=Date.now(); if(now-lmkT<60000&&lmkT) return; lmkT=now; loadLandmarks(); }
+async function loadLandmarks(){ if(!me) return;
+  const q=`[out:json][timeout:20];(node(around:3000,${me.lat},${me.lon})["place"]["name"];node(around:2500,${me.lat},${me.lon})["natural"]["name"];node(around:2000,${me.lat},${me.lon})["amenity"]["name"];node(around:2500,${me.lat},${me.lon})["tourism"]["name"];);out 60;`;
+  try{
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:q});
+    const j=await r.json();
+    const items=(j.elements||[]).filter(e=>e.lat&&e.tags&&e.tags.name).map(e=>({name:e.tags.name,type:e.tags.place||e.tags.natural||e.tags.amenity||e.tags.tourism||'',lat:e.lat,lon:e.lon,d:distKm(me.lat,me.lon,e.lat,e.lon),b:bearing(me.lat,me.lon,e.lat,e.lon)}));
+    const seen=new Set(); const near=items.filter(i=>{const k=i.name;if(seen.has(k))return false;seen.add(k);return true;}).sort((a,b)=>a.d-b.d).slice(0,10);
+    $('#landmarks').innerHTML = near.length? near.map(i=>`<div class="lmk"><span class="b">${Math.round(i.b)}° ${compassName(i.b)}</span><span><b>${esc(i.name)}</b>${i.type?` <span class="muted small">(${esc(i.type)})</span>`:''}<br><span class="muted small">${i.d<1?Math.round(i.d*1000)+' m':i.d.toFixed(1)+' km'} away</span></span></div>`).join('') : '<p class="muted small">No named places found nearby.</p>';
+  }catch(e){ $('#landmarks').innerHTML='<p class="muted small">Couldn’t load landmarks (needs internet). Pulls named places from OpenStreetMap.</p>'; }
+}
+const esc=v=>String(v==null?'':v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
+drawCompass();
+</script>
+
+<script>
+/* ===========================================================================
+   Pigeon live location sharing — fresh WebRTC + AES-256-GCM (no Shelly code)
+   Relay only carries the WebRTC setup; location/video/audio go phone-to-phone.
+   =========================================================================== */
+const CONFIG = { relay: (()=>{ try{ return localStorage.getItem('pigeon-relay'); }catch(e){ return null; } })() || window.__PIGEON_RELAY || 'https://pigeon-relay.YOURNAME.workers.dev' };
+
+const SHARE = (function(){
+  let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false;
+  const relay = ()=> (CONFIG.relay||'').replace(/\/+$/,'');
+  const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const unb64u = s => { s=s.replace(/-/g,'+').replace(/_/g,'/'); const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return u; };
+  const importKey = raw => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt','decrypt']);
+  async function enc(obj){ const iv=crypto.getRandomValues(new Uint8Array(12)); const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj))); const out=new Uint8Array(12+ct.byteLength); out.set(iv); out.set(new Uint8Array(ct),12); return out.buffer; }
+  async function dec(buf){ const u=new Uint8Array(buf); const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(0,12)},key,u.slice(12)); return JSON.parse(new TextDecoder().decode(pt)); }
+
+  async function iceConf(){ try{ const r=await fetch(relay()+'/ice'); const j=await r.json(); return {iceServers:j.iceServers||[]}; }catch(e){ return {iceServers:[{urls:'stun:stun.l.google.com:19302'}]}; } }
+  async function post(type,data){ try{ await fetch(relay()+'/room/'+room,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({from:role,type,data})}); }catch(e){} }
+  function startPoll(){ stopPoll(); pollT=setInterval(async()=>{ try{ const r=await fetch(relay()+'/room/'+room+'?role='+role+'&since='+cursor); const j=await r.json(); for(const m of (j.msgs||[])){ cursor=Math.max(cursor,m.seq); await handle(m); } }catch(e){} }, 1000); }
+  function stopPoll(){ if(pollT)clearInterval(pollT); pollT=null; }
+
+  async function handle(m){
+    if(m.type==='request' && role==='host'){ cbs.onRequest && cbs.onRequest(m.data||{}); if(!offered){ offered=true; approve(); } }   // sender already consented by sending the link; viewer just accepts
+    else if(m.type==='offer' && role==='guest'){ if(!pc){ await onOffer(m.data); } else { await onRenegotiate(m.data); } }
+    else if(m.type==='answer' && role==='host'){ try{ await pc.setRemoteDescription(m.data); remoteSet=true; flush(); }catch(e){} }
+    else if(m.type==='ice'){ if(pc && remoteSet){ try{ await pc.addIceCandidate(m.data); }catch(e){} } else pending.push(m.data); }   // queue ICE until the description is set
+  }
+  function flush(){ pending.forEach(c=>pc.addIceCandidate(c).catch(()=>{})); pending=[]; }
+  function wirePc(){ pc.onicecandidate=e=>{ if(e.candidate) post('ice',e.candidate); };
+    pc.onconnectionstatechange=()=>cbs.onState&&cbs.onState(pc.connectionState);
+    pc.ontrack=e=>cbs.onStream&&cbs.onStream(e.streams[0]); }
+  function wireDc(){ dc.binaryType='arraybuffer';
+    dc.onopen=()=>{ cbs.onState&&cbs.onState('linked');
+      if(role==='host'){ if(media.pic) sendPic(media.pic); sendLoc(lastLoc); clearInterval(locT); locT=setInterval(()=>sendLoc(lastLoc),2000); } };   // live resend so it's never missed
+    dc.onclose=()=>clearInterval(locT);
+    dc.onmessage=async e=>{ try{ const o=await dec(e.data); if(o.t==='loc') cbs.onLocation&&cbs.onLocation(o.loc); else if(o.t==='pic') cbs.onPic&&cbs.onPic(o.pic); }catch(err){} }; }
+  async function sendLoc(loc){ if(dc&&dc.readyState==='open'){ try{ dc.send(await enc({t:'loc',loc})); }catch(e){} } }
+  async function sendPic(p){ if(dc&&dc.readyState==='open'){ try{ dc.send(await enc({t:'pic',pic:p})); }catch(e){} } }
+
+  async function startShare(opts, callbacks){
+    if(!relay()||relay().includes('YOURNAME')) throw new Error('Set the Pigeon relay URL first (deploy the relay, then Settings).');
+    role='host'; cbs=callbacks||{}; media=opts||{}; offered=false;
+    room=b64u(crypto.getRandomValues(new Uint8Array(9)));
+    const rawKey=crypto.getRandomValues(new Uint8Array(32)); key=await importKey(rawKey);
+    cursor=0; remoteSet=false; pending=[]; startPoll();
+    const relayTag=b64u(new TextEncoder().encode(relay()));    // put the relay in the link so the viewer needs no setup
+    return { room, link: location.origin+location.pathname+'#view='+room+'.'+b64u(rawKey)+'~'+relayTag };
+  }
+  async function approve(){
+    pc=new RTCPeerConnection(await iceConf()); wirePc();
+    if(media.video||media.audio){ try{ localStream=await navigator.mediaDevices.getUserMedia({video:!!media.video,audio:!!media.audio}); localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); }catch(e){ cbs.onState&&cbs.onState('camera/mic blocked — sharing location only'); } }
+    dc=pc.createDataChannel('loc'); wireDc();
+    const offer=await pc.createOffer(); await pc.setLocalDescription(offer); remoteSet=false; await post('offer',offer);
+  }
+  async function view(r,kB64,callbacks){ role='guest'; cbs=callbacks||{}; room=r; key=await importKey(unb64u(kB64)); cursor=0; remoteSet=false; pending=[]; startPoll(); await post('request',{name:'A Pigeon user'}); }
+  async function onOffer(offer){ pc=new RTCPeerConnection(await iceConf()); wirePc();
+    pc.ondatachannel=e=>{ dc=e.channel; wireDc(); };
+    await pc.setRemoteDescription(offer); remoteSet=true; flush();
+    const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await post('answer',answer); }
+  // Subsequent offers (sharer added/dropped a video or audio feed) — reuse the same connection.
+  async function onRenegotiate(offer){ try{ await pc.setRemoteDescription(offer); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await post('answer',answer); }catch(e){} }
+  // Sharer turns a live video/audio feed on or off at any time (location keeps flowing either way).
+  async function setMedia(m2){
+    media=Object.assign({},media,m2||{});
+    if(!pc){ return media; }                               // not linked yet — applied when the link is opened
+    if(localStream){ localStream.getTracks().forEach(t=>t.stop()); }
+    pc.getSenders().filter(s=>s.track).forEach(s=>{ try{ pc.removeTrack(s); }catch(e){} });
+    localStream=null;
+    if(media.video||media.audio){
+      try{ localStream=await navigator.mediaDevices.getUserMedia({video:!!media.video,audio:!!media.audio});
+        localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); }
+      catch(e){ cbs.onState&&cbs.onState('camera/mic blocked — still sharing location'); media.video=false; media.audio=false; }
+    }
+    try{ const offer=await pc.createOffer(); await pc.setLocalDescription(offer); remoteSet=false; await post('offer',offer); }catch(e){}
+    return media;
+  }
+  function updateLocation(loc){ lastLoc=loc; sendLoc(loc); }
+  function stop(){ stopPoll(); clearInterval(locT); try{dc&&dc.close();}catch(e){} try{pc&&pc.close();}catch(e){} if(localStream)localStream.getTracks().forEach(t=>t.stop()); pc=dc=null; role=null; }
+  return { startShare, approve, view, updateLocation, setMedia, stop };
+})();
+window.SHARE = SHARE;
+
+/* ---------- share / view UI ---------- */
+(function(){
+  const $=s=>document.querySelector(s);
+  let viewMarker=null, myPhoto=null, live=false, vOn=false, aOn=false;
+  function reflect(){ const vb=$('#t-video'), ab=$('#t-audio'); if(!vb||!ab)return; vb.classList.toggle('on',vOn); ab.classList.toggle('on',aOn); vb.setAttribute('aria-pressed',vOn); ab.setAttribute('aria-pressed',aOn); }
+  function feedLabel(){ return 'Sharing your location'+(vOn?' + live video':'')+(aOn?' + live audio':'')+'.'; }
+  function compressImage(file){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ const s=Math.min(1,160/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.7)); }; img.onerror=()=>res(null); img.src=URL.createObjectURL(file); }); }
+  const pin=$('#share-photo'); if(pin) pin.onchange=async()=>{ const f=pin.files[0]; if(!f)return; myPhoto=await compressImage(f); $('#photo-state').textContent='Photo added ✓'; };
+  function iconFor(pic){ return (pic&&typeof L!=='undefined')?L.divIcon({className:'',html:`<img src="${pic}" style="width:46px;height:46px;border-radius:50%;border:3px solid #36c4ff;object-fit:cover">`,iconSize:[46,46],iconAnchor:[23,23]}):undefined; }
+  async function begin(opts){
+    try{
+      const s=await SHARE.startShare(Object.assign({pic:myPhoto},opts),{
+        onRequest:(info)=>{ $('#share-reqs').innerHTML='<p class="small muted">'+esc(info.name||'Someone')+' opened your link — connecting…</p>'; },
+        onState:(st)=>{ $('#share-state').textContent = st==='linked'?'Connected — they can see your live location.':st==='connected'?'Linked.':'Status: '+st; }
+      });
+      live=true;
+      $('#share-box').hidden=false; $('#share-stop').hidden=false; $('#share-loc').hidden=true;
+      $('#share-link').textContent=s.link; $('#share-state').textContent='Waiting for someone to open the link… '+feedLabel();
+      $('#share-copy').onclick=()=>{ navigator.clipboard?.writeText(s.link).then(()=>$('#share-state').textContent='Link copied — send it to one person.',()=>{}); };
+    }catch(e){ alert(e.message); }
+  }
+  // relay URL config (needed once, after you deploy the relay worker)
+  (function(){ const inp=$('#relay-url'); if(!inp) return;
+    if(CONFIG.relay && !CONFIG.relay.includes('YOURNAME')){ inp.value=CONFIG.relay; $('#relay-row').style.opacity='.6'; }
+    $('#relay-save').onclick=()=>{ const v=inp.value.trim(); if(!v) return; CONFIG.relay=v; try{localStorage.setItem('pigeon-relay',v);}catch(e){} $('#relay-row').style.opacity='.6'; $('#share-state')&&($('#share-state').textContent='Relay saved.'); };
+  })();
+  async function toggleFeed(which){
+    if(which==='v'){ vOn=!vOn; if(vOn && window.__pigeonAskCamera) window.__pigeonAskCamera(); }
+    else { aOn=!aOn; }
+    reflect();
+    if(live){ await SHARE.setMedia({video:vOn,audio:aOn}); $('#share-state').textContent=feedLabel(); }
+  }
+  $('#t-video').onclick=()=>toggleFeed('v');
+  $('#t-audio').onclick=()=>toggleFeed('a');
+  $('#share-loc').onclick=()=>begin({video:vOn,audio:aOn});
+  $('#share-stop').onclick=()=>{ SHARE.stop(); live=false; vOn=false; aOn=false; reflect();
+    $('#share-box').hidden=true; $('#share-stop').hidden=true; $('#share-loc').hidden=false; $('#share-reqs').innerHTML=''; $('#share-state').textContent='Location sharing stopped.'; };
+
+  // Viewer: opened a share link  (#view=room.key~relay)
+  const h=location.hash.match(/^#view=([A-Za-z0-9_-]{6,64})\.([A-Za-z0-9_-]+)(?:~([A-Za-z0-9_-]+))?$/);
+  if(h){
+    if(h[3]){ try{ const s=h[3].replace(/-/g,'+').replace(/_/g,'/'); const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); CONFIG.relay=new TextDecoder().decode(u); }catch(e){} }
+    let senderPic=null;
+    $('#share-card').querySelector('h2').textContent='Someone is sharing their location';
+    const rr=$('#relay-row'); if(rr) rr.style.display='none';
+    $('#share-loc').hidden=true; const tv=$('#t-video'),ta=$('#t-audio'),fh=$('#feed-hint'); if(tv)tv.hidden=true; if(ta)ta.hidden=true; if(fh)fh.hidden=true; $('#view-box').hidden=false;
+    $('#view-title').innerHTML='<button class="btn go" id="view-accept">✅ Accept &amp; view on map</button>';
+    $('#view-accept').onclick=()=>{
+      $('#view-title').textContent='Live location'; $('#view-pos').textContent='connecting…';
+      try{ document.querySelector('.map-wrap').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+      SHARE.view(h[1],h[2],{
+        onState:(st)=>{ $('#view-state').textContent='Status: '+(st==='linked'?'connected':st); },
+        onStream:(stream)=>{ const v=$('#view-video'); v.srcObject=stream; v.style.display=''; v.muted=false; },
+        onPic:(pic)=>{ senderPic=pic;
+          $('#view-title').innerHTML=`<img src="${pic}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;vertical-align:middle;border:2px solid var(--accent)"> Live location`;
+          if(viewMarker) viewMarker.setIcon(iconFor(pic)); },
+        onLocation:(loc)=>{
+          $('#view-pos').textContent = loc.lat.toFixed(5)+', '+loc.lon.toFixed(5)+(loc.grid?('  '+loc.grid):'');
+          if(typeof L!=='undefined'){ const ic=iconFor(senderPic);
+            if(viewMarker) viewMarker.setLatLng([loc.lat,loc.lon]); else { viewMarker=L.marker([loc.lat,loc.lon], ic?{icon:ic}:undefined).addTo(map).bindTooltip('Shared location'); map.setView([loc.lat,loc.lon],15); } }
+          if(me){ const b=bearing(me.lat,me.lon,loc.lat,loc.lon), d=distKm(me.lat,me.lon,loc.lat,loc.lon);
+            $('#view-brg').textContent=Math.round(b)+'° '+compassName(b)+' · '+(d<1?Math.round(d*1000)+' m':d.toFixed(1)+' km'); }
+        }
+      });
+    };
+  }
+})();
+</script>
+<script>
+/* Native (Capacitor) permission bootstrap — no-op on the web/artifact build.
+   Asks Android/iOS for location (and camera for optional video sharing) so the
+   page's navigator.geolocation / getUserMedia / compass work in the app WebView. */
+(function(){
+  try{
+    if(!window.Capacitor || typeof Capacitor.isNativePlatform!=='function' || !Capacitor.isNativePlatform()) return;
+    var P = Capacitor.Plugins || {};
+    var ask = function(){
+      try{ P.Geolocation && P.Geolocation.requestPermissions && P.Geolocation.requestPermissions(); }catch(e){}
+    };
+    document.addEventListener('deviceready', ask);
+    ask();
+    // Camera/mic is requested only when the user turns on video/audio sharing.
+    window.__pigeonAskCamera = function(){
+      try{ P.Camera && P.Camera.requestPermissions && P.Camera.requestPermissions({permissions:['camera']}); }catch(e){}
+    };
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
