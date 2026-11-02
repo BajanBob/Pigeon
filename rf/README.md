@@ -78,6 +78,28 @@ Decode a recording instead of live audio:
 python rf_station.py rx --wav recording.wav
 ```
 
+## PigeonFSK-2 — the low-SNR / AI-hybrid mode
+
+`pigeon_rf2.py` is a second-generation waveform for pulling a beacon out of the
+noise far below where the Hamming version gives up:
+
+- narrow 16-FSK at ~3.9 baud (~59 Hz wide)
+- **non-coherent soft-decision** detection (16 tone powers → 4 soft bit metrics)
+- **convolutional FEC r=1/2, K=7** with a **soft-input Viterbi** decoder
+- block interleaving + CRC-16, Costas-style sync for low-SNR acquisition
+
+**Measured (AWGN, 2500 Hz reference bandwidth — the FT8 convention):** 100 %
+decode to −19 dB, ~50 % at **−21 dB**, 0 false decodes from pure noise. That is
+FT8-class sensitivity, and beats the −18 dB design target. Cost: a ~31 s beacon.
+
+Caveats: measured on AWGN with no carrier offset or fading. Real HF (Watterson
+multipath + Doppler) will raise the threshold — validate with the MATLAB model.
+
+`pigeonfsk2_model.m` (MATLAB, Communications Toolbox) reproduces the sweep and
+provides the path lower still: swap the convolutional code for **LDPC**, add true
+soft LLRs, test on the **ITU-R HF fading channel**, and prototype a neural
+receiver (Deep Learning Toolbox) — the genuine AI-hybrid step.
+
 ## How it fits Pigeon's two location sources
 
 - **Ham operators** → located by **Maidenhead grid over RF**, clear text, shown via
