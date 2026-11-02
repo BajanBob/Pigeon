@@ -64,6 +64,28 @@ export default {
       });
     }
 
+    // Ham RF heard-station board (clear text — amateur radio forbids encryption).
+    // The Windows PigeonFSK decoder POSTs stations it hears over RF; the Pigeon
+    // map GETs them to plot licensed operators by their Maidenhead grid square.
+    if (path === "/rf") {
+      if (request.method === "POST") {
+        let b; try { b = await request.json(); } catch (e) { return json({ error: "bad json" }, 400); }
+        const call = String(b.callsign || "").toUpperCase().slice(0, 12);
+        if (!/^[A-Z0-9/]{3,12}$/.test(call)) return json({ error: "bad callsign" }, 400);
+        const st = { callsign: call, grid: String(b.grid || "").slice(0, 8),
+                     lat: Number(b.lat), lon: Number(b.lon), ts: Number(b.ts) || Date.now(),
+                     mode: String(b.mode || "PigeonFSK").slice(0, 16) };
+        await env.SIG.put(`rf:${call}`, JSON.stringify(st), { expirationTtl: 3600 });
+        return json({ ok: true });
+      }
+      if (request.method === "GET") {
+        const list = await env.SIG.list({ prefix: "rf:" });
+        const stations = [];
+        for (const k of list.keys) { const raw = await env.SIG.get(k.name); if (raw) { try { stations.push(JSON.parse(raw)); } catch (e) {} } }
+        return json({ stations });
+      }
+    }
+
     const m = path.match(/^\/room\/([^/]+)$/);
     if (m) {
       const room = m[1];

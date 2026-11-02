@@ -788,6 +788,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <div class="layers">
         <button data-layer="street" class="on">Street</button>
         <button data-layer="terrain">Terrain</button>
+        <button id="rf-toggle" title="Show licensed ham operators heard over RF (clear-text grid squares)">📻 Ham RF</button>
       </div>
       <div class="map-wrap"><div id="map"></div></div>
     </section>
@@ -864,10 +865,34 @@ const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{m
 const terrain=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'&copy; OpenTopoMap (CC-BY-SA)'});
 street.addTo(map);
 let meMarker=null, destMarker=null, lineLayer=null;
-document.querySelectorAll('.layers button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.layers button').forEach(x=>x.classList.toggle('on',x===b));
+document.querySelectorAll('.layers button[data-layer]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.layers button[data-layer]').forEach(x=>x.classList.toggle('on',x===b));
   if(b.dataset.layer==='street'){ map.removeLayer(terrain); street.addTo(map); } else { map.removeLayer(street); terrain.addTo(map); }
 });
+
+// ---------- Ham RF layer: licensed operators heard over RF (clear-text grids) ----------
+const rfLayer = L.layerGroup();
+let rfOn=false, rfTimer=null;
+async function pollRF(){
+  try{
+    const base=(CONFIG.relay||'').replace(/\/+$/,''); if(!base||base.includes('YOURNAME')) return;
+    const r=await fetch(base+'/rf'); const j=await r.json();
+    rfLayer.clearLayers();
+    (j.stations||[]).forEach(s=>{
+      if(typeof s.lat!=='number'||typeof s.lon!=='number') return;
+      const age=Date.now()-(s.ts||0), fresh=age<30*60000;
+      const dot=L.circleMarker([s.lat,s.lon],{radius:7,color:'#ff3b30',weight:2,fillColor:'#ff3b30',fillOpacity:fresh?0.9:0.4});
+      dot.bindTooltip('📻 '+s.callsign+' · '+(s.grid||'')+' · '+(s.mode||'RF'),{direction:'top'});
+      rfLayer.addLayer(dot);
+    });
+  }catch(e){}
+}
+const rfBtn=$('#rf-toggle');
+if(rfBtn) rfBtn.onclick=()=>{
+  rfOn=!rfOn; rfBtn.classList.toggle('on',rfOn);
+  if(rfOn){ rfLayer.addTo(map); pollRF(); rfTimer=setInterval(pollRF,20000); }
+  else { clearInterval(rfTimer); map.removeLayer(rfLayer); }
+};
 map.on('click',e=>{ if(pickMode){ setDest(e.latlng.lat,e.latlng.lng); pickMode=false; $('#pick').textContent='Tap map to pick'; }});
 
 // ---------- destination ----------
