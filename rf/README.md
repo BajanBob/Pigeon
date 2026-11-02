@@ -122,9 +122,21 @@ apples on BPSK+AWGN at the same rate and ~200-bit frame:
 | 2.5 dB | 90 % | **100 %** |
 | 3.5 dB | 100 % | 100 % |
 
-LDPC reaches reliable decode **~1 dB sooner** at this short frame — enough to move
-the AWGN waveform threshold toward ~−22 dB. The gain grows (≈1.5–2 dB) with a
-longer frame, an irregular H, or full sum-product in place of min-sum.
+On that **isolated BPSK channel** LDPC reaches reliable decode ~1 dB sooner. But
+**in the actual waveform** (`homer_ldpc.py`, same FSK front-end, conv→LDPC+min-sum)
+the picture reverses — measured AWGN threshold:
+
+| SNR / 2500 Hz | conv (shipping) | LDPC(3,6) + min-sum |
+|---|---|---|
+| −20 dB | 100 % | 100 % |
+| −21 dB | ~60 % | 33 % |
+| −22 dB | 0 % | 0 % |
+
+So the short LDPC is **~0.5 dB worse** here, not better. Honest takeaway: at a
+200-bit frame, convolutional+Viterbi is excellent and hard to beat; LDPC's edge
+only appears with a **longer frame, an irregular/optimized H (e.g. FT8's
+LDPC(174,91)), or full sum-product** instead of min-sum. **Convolutional r=1/2 K=7
+stays the shipping AVIAN code.** Both decoders give 0 false decodes from noise.
 
 ### The MATLAB research model
 
