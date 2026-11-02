@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e1724"/>
+      <stop offset="1" stop-color="#0a0f14"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9fb4c6"/>
+      <stop offset="1" stop-color="#5f7488"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#cfe0ef"/>
+      <stop offset="1" stop-color="#7f94a8"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#36c4ff"/>
+      <stop offset="1" stop-color="#ff8a1e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded tile -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+
+  <!-- motion arc behind the bird -->
+  <path d="M150 640 Q 440 760 760 560" fill="none" stroke="url(#sky)" stroke-width="22" stroke-linecap="round" opacity="0.55"/>
+  <path d="M190 710 Q 470 820 820 630" fill="none" stroke="url(#sky)" stroke-width="12" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- carrier pigeon in flight, carrying a message capsule -->
+  <g transform="translate(512 500) rotate(-12)">
+    <!-- far wing (up) -->
+    <path d="M-40 -30 C -150 -210 -300 -250 -360 -210 C -250 -170 -180 -90 -70 -40 Z" fill="url(#wing)" opacity="0.9"/>
+    <!-- tail -->
+    <path d="M160 40 C 300 60 360 110 380 170 C 300 150 250 140 180 120 Z" fill="url(#body)"/>
+    <!-- body -->
+    <path d="M-70 -20 C -30 -90 90 -110 190 -70 C 250 -46 230 60 150 100 C 70 136 -40 120 -90 60 C -110 30 -100 10 -70 -20 Z" fill="url(#body)"/>
+    <!-- head + beak -->
+    <circle cx="200" cy="-78" r="56" fill="url(#body)"/>
+    <path d="M250 -86 L 316 -74 L 250 -56 Z" fill="#ff8a1e"/>
+    <circle cx="214" cy="-90" r="11" fill="#0e1724"/>
+    <!-- near wing (down, sweeping) -->
+    <path d="M30 -10 C -40 160 -170 260 -300 270 C -210 160 -150 60 -40 20 Z" fill="url(#wing)"/>
+    <!-- leg + message capsule -->
+    <line x1="60" y1="108" x2="60" y2="168" stroke="#ff8a1e" stroke-width="10" stroke-linecap="round"/>
+    <rect x="34" y="166" width="52" height="30" rx="8" fill="#ff8a1e" stroke="#0e1724" stroke-width="5"/>
+  </g>
+</svg>

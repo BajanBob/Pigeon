@@ -28,6 +28,8 @@ jobs:
         run: npm install
       - name: Add Android platform
         run: npx cap add android
+      - name: Generate app icons (carrier pigeon)
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#0a0f14' --iconBackgroundColorDark '#0a0f14' || echo "assets step skipped"
       - name: Patch permissions
         run: node scripts/patch-android.mjs
       - name: Sync web assets
@@ -65,6 +67,8 @@ jobs:
         run: npm install
       - name: Add iOS platform
         run: npx cap add ios
+      - name: Generate app icons (carrier pigeon)
+        run: npx @capacitor/assets generate --ios --iconBackgroundColor '#0a0f14' --iconBackgroundColorDark '#0a0f14' || echo "assets step skipped"
       - name: Patch permissions
         run: bash scripts/patch-ios.sh
       - name: Sync web assets
