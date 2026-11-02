@@ -1349,17 +1349,19 @@ window.SHARE = SHARE;
     $('#st-hide').style.display=b.dataset.sttab==='hide'?'':'none'; $('#st-reveal').style.display=b.dataset.sttab==='reveal'?'':'none'; });
   $$('#stealth-card .st-chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
   const SENT=["Thanks for the update, I'll review and reply tomorrow.","Great catching up — let's sync next week.","Here are the photos from the weekend!","Reminder: the meeting moved to 3pm.","All set here, shout if you need anything."];
-  function noiseImg(){ const c=document.createElement('canvas'); c.width=320;c.height=240; const x=c.getContext('2d'),id=x.createImageData(320,240); for(let i=0;i<id.data.length;i+=4){id.data[i]=Math.random()*255;id.data[i+1]=Math.random()*255;id.data[i+2]=Math.random()*255;id.data[i+3]=255;} x.putImageData(id,0,0); return c.toDataURL('image/png'); }
-  function toneWav(){ const fs=16000,n=fs*2,buf=new ArrayBuffer(44+n*2),dv=new DataView(buf),w=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
+  function noiseImg(minBytes){ const px=Math.ceil((4+(minBytes||1))*8/3)+64; const W=Math.min(4096,Math.max(96,Math.ceil(Math.sqrt(px)))), H=Math.ceil(px/W)+2;
+    const c=document.createElement('canvas'); c.width=W;c.height=H; const x=c.getContext('2d'),id=x.createImageData(W,H); for(let i=0;i<id.data.length;i+=4){id.data[i]=Math.random()*255;id.data[i+1]=Math.random()*255;id.data[i+2]=Math.random()*255;id.data[i+3]=255;} x.putImageData(id,0,0); return c.toDataURL('image/png'); }
+  function toneWav(minBytes){ const fs=16000,n=Math.max(fs*2,(4+(minBytes||1))*8+16000),buf=new ArrayBuffer(44+n*2),dv=new DataView(buf),w=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
     w(0,'RIFF');dv.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,fs,true);dv.setUint32(28,fs*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);w(36,'data');dv.setUint32(40,n*2,true);
     for(let i=0;i<n;i++)dv.setInt16(44+i*2,Math.sin(2*Math.PI*440*i/fs)*8000,true); return URL.createObjectURL(new Blob([buf],{type:'audio/wav'})); }
-  function cover(t){ if(t==='image')return{type:'image',url:noiseImg(),name:'picture'}; if(t==='audio')return{type:'audio',url:toneWav(),name:'audio'}; return{type:'text',url:SENT[Math.floor(Math.random()*SENT.length)],name:'note'}; }
+  function cover(t,need){ if(t==='image')return{type:'image',url:noiseImg(need),name:'picture'}; if(t==='audio')return{type:'audio',url:toneWav(need),name:'audio'}; return{type:'text',url:SENT[Math.floor(Math.random()*SENT.length)],name:'note'}; }
   $('#st-scatter').onclick=async()=>{
     const out=$('#st-out'); out.innerHTML=''; const pass=$('#st-pass').value, msg=$('#st-msg').value, types=$$('#stealth-card .st-chip.on').map(c=>c.dataset.type);
     if(!pass||!msg){ out.innerHTML='<p class="small" style="color:var(--bad)">Enter a message and pass-phrase.</p>'; return; }
     if(!types.length){ out.innerHTML='<p class="small" style="color:var(--bad)">Pick at least one carrier.</p>'; return; }
     try{ $('#st-scatter').disabled=true; $('#st-scatter').textContent='Scattering…';
-      const outs=await STEALTH.scatter(STEALTH.utf8(msg), pass, types.map(cover));
+      const need=Math.ceil((STEALTH.utf8(msg).length+44)/types.length)+18;   // auto-size covers to the shard
+      const outs=await STEALTH.scatter(STEALTH.utf8(msg), pass, types.map(t=>cover(t,need)));
       $('#st-scatter').disabled=false; $('#st-scatter').textContent='🪶 Scatter';
       const ic={image:'🖼️',audio:'🎵',text:'📝'}; out.innerHTML='<p class="small" style="color:var(--ok,#39d98a)">Send ALL '+outs.length+' files + the pass-phrase.</p>';
       outs.forEach(o=>{ const u=URL.createObjectURL(o.blob),d=document.createElement('div'); d.className='st-carrier';
