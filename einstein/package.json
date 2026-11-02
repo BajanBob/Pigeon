@@ -1,7 +1,7 @@
 {
   "name": "einstein",
   "version": "1.0.0",
-  "description": "Einstein — weak-signal station log & analysis (WSJT-X import, grid DX, weather-tagged logging, ADIF/CSV).",
+  "description": "Einstein \u2014 weak-signal station log & analysis (WSJT-X import, grid DX, weather-tagged logging, ADIF/CSV).",
   "author": "BajanBob",
   "license": "MIT",
   "main": "electron/main.js",
@@ -23,10 +23,39 @@
   "build": {
     "appId": "net.einstein.log",
     "productName": "Einstein",
-    "files": [ "electron/**/*", "www/**/*" ],
-    "directories": { "output": "dist", "buildResources": "resources" },
-    "win": { "target": [ { "target": "nsis", "arch": ["x64"] } ], "icon": "resources/icon.png" },
-    "linux": { "target": [ "AppImage", "deb" ], "icon": "resources/icon.png", "category": "Network", "maintainer": "BajanBob" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false }
-  }
+    "files": [
+      "electron/**/*",
+      "www/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "resources/icon.png",
+      "category": "Network",
+      "maintainer": "BajanBob"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    }
+  },
+  "homepage": "https://github.com/BajanBob/Pigeon"
 }
