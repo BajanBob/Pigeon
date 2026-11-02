@@ -1267,7 +1267,10 @@ const SHARE = (function(){
     const ct=customTurn(); if(ct) servers=[ct, ...servers];     // your own TURN (e.g. metered.ca) takes priority
     return {iceServers:servers, iceTransportPolicy:pol}; }
   async function post(type,data){ try{ await fetch(relay()+'/room/'+room,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({from:role,type,data})}); }catch(e){} }
-  function startPoll(){ stopPoll(); pollT=setInterval(async()=>{ try{ const r=await fetch(relay()+'/room/'+room+'?role='+role+'&since='+cursor); const j=await r.json(); for(const m of (j.msgs||[])){ cursor=Math.max(cursor,m.seq); await handle(m); } }catch(e){} }, 1000); }
+  let pollTick=0;
+  function startPoll(){ stopPoll(); pollTick=0; pollT=setInterval(async()=>{ try{ const r=await fetch(relay()+'/room/'+room+'?role='+role+'&since='+cursor); const j=await r.json(); const got=(j.msgs||[]); for(const m of got){ cursor=Math.max(cursor,m.seq); await handle(m); }
+    if(role==='host' && !pc){ pollTick++; if(pollTick%8===1) diag('waiting for a viewer to open the link… (room '+(room||'').slice(0,8)+')'); }
+  }catch(e){ diag('relay poll error — check the relay URL'); } }, 1000); }
   function stopPoll(){ if(pollT)clearInterval(pollT); pollT=null; }
 
   async function handle(m){
@@ -1311,6 +1314,7 @@ const SHARE = (function(){
     room=b64u(crypto.getRandomValues(new Uint8Array(9)));
     const rawKey=crypto.getRandomValues(new Uint8Array(32)); key=await importKey(rawKey);
     cursor=0; remoteSet=false; pending=[]; startPoll();
+    diag('sharing live — room '+room.slice(0,8)+'. Send THIS link; the viewer must open this exact one.');
     const relayTag=b64u(new TextEncoder().encode(relay()));    // put the relay in the link so the viewer needs no setup
     return { room, link: relay()+'/#view='+room+'.'+b64u(rawKey)+'~'+relayTag };   // link opens the viewer served by the relay (a real, shareable URL)
   }
@@ -1340,7 +1344,7 @@ const SHARE = (function(){
     }finally{ approving=false; }
   }
   async function view(r,kB64,callbacks){ role='guest'; cbs=callbacks||{}; room=r; key=await importKey(unb64u(kB64)); cursor=0; remoteSet=false; pending=[]; startPoll();
-    diag('requesting connection from sharer'); await post('request',{name:'A Pigeon user'});
+    diag('requesting connection — room '+room.slice(0,8)); await post('request',{name:'A Pigeon user'});
     // Keep knocking until the sharer answers — covers the sharer being briefly backgrounded or the link opened before they're ready.
     clearInterval(reqT); let tries=0;
     reqT=setInterval(()=>{ if(remoteSet || (pc&&pc.connectionState==='connected') || tries++>45){ clearInterval(reqT); reqT=null; return; }
