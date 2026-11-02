@@ -148,10 +148,32 @@ short LDPC with dual-diagonal parity that `ldpcEncoderConfig` accepts, and an
 reproduces the Python thresholds above and is the place to prototype a neural
 receiver (Deep Learning Toolbox) — the genuine AI-hybrid step.
 
+### Ocean Scatter (experimental R&D — `ocean_scatter.py`)
+
+Not an established mode. Models signals scattered off the moving sea surface, whose
+**Bragg Doppler** (the lines known from HF ocean radar / CODAR) is computed from
+physics: EM wavelength L=c/f, resonant ocean wave L/2, gravity-wave speed
+v=√(g·(L/2)/2π), Doppler fB=2v/L. Measured first-order Bragg by band:
+
+| Band | Bragg fB |
+|---|---|
+| 14 MHz | 0.38 Hz |
+| 50 MHz | 0.72 Hz |
+| 144 MHz | 1.22 Hz |
+| 222 MHz | 1.52 Hz |
+| 432 MHz | 2.12 Hz |
+
+HOMER on an ocean-scatter channel (measured): **HF (calm) ≈ −18 dB**, but
+**2 m (moderate sea) ≈ −12 dB** — the VHF Bragg + sea-state broadening smears
+HOMER's ~59 Hz tones, costing ~8 dB. Honest conclusion: HOMER is fine for HF ocean
+paths; **VHF ocean scatter wants a dedicated waveform** with wider tone spacing,
+faster symbols, and per-symbol Doppler/Bragg tracking. That's the OSM R&D step.
+
 ### Measurement scripts
 
 - **`measure_fading.py`** — AWGN + Watterson HF threshold sweeps on the real decoder.
 - **`ldpc_compare.py`** — convolutional-vs-LDPC coding-gain comparison (self-contained LDPC).
+- **`ocean_scatter.py`** — ocean Bragg-Doppler channel model + HOMER threshold on it.
 
 ## How it fits Pigeon's two location sources
 
