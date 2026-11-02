@@ -97,6 +97,37 @@ jobs:
           name: Pigeon v1.0.0
           files: out/Pigeon-iPhone-unsigned.ipa
 
+  linux:
+    name: Linux (AppImage + deb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install
+      - name: Build Linux packages
+        run: npx electron-builder --linux --publish never
+      - name: Stage packages
+        run: |
+          mkdir -p out
+          cp dist-win/*.AppImage out/ 2>/dev/null || true
+          cp dist-win/*.deb out/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pigeon-Linux
+          path: out/*
+      - name: Publish to release
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: Pigeon v1.0.0
+          files: |
+            out/*.AppImage
+            out/*.deb
+
   windows:
     name: Windows installer (.exe)
     runs-on: windows-latest

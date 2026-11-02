@@ -10,7 +10,8 @@
     "cap:android": "cap add android && cap sync android",
     "cap:ios": "cap add ios && cap sync ios",
     "electron": "electron .",
-    "dist:win": "electron-builder --win --publish never"
+    "dist:win": "electron-builder --win --publish never",
+    "dist:linux": "electron-builder --linux --publish never"
   },
   "dependencies": {
     "@capacitor/android": "6.2.1",
@@ -40,6 +41,12 @@
         { "target": "nsis", "arch": ["x64"] }
       ],
       "icon": "resources/icon.png"
+    },
+    "linux": {
+      "target": [ "AppImage", "deb" ],
+      "icon": "resources/icon.png",
+      "category": "Network",
+      "maintainer": "BajanBob"
     },
     "nsis": {
       "oneClick": false,
