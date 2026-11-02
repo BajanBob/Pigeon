@@ -761,8 +761,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <h2>Destination &amp; location</h2>
       <label class="k" style="display:block;margin-bottom:6px">My location</label>
       <div class="layers">
-        <button id="loc-gps" class="on" title="Use the phone's GPS/GNSS fix (most accurate)">📡 GPS</button>
-        <button id="loc-ip" title="Locate this device by its internet (IP) address — approximate">🌐 IP address</button>
+        <button id="loc-gps" class="on" title="Exact GPS/GNSS fix. You navigate precisely and share your exact position.">📡 GPS</button>
+        <button id="loc-ip" title="Locate by internet (IP) address — approximate, and reflects your VPN exit when a VPN is on.">🌐 IP</button>
+        <button id="loc-mask" title="Navigate with exact GPS yourself, but share a position fuzzed to ~1 km so your exact spot is hidden from the other person.">🎭 Masked</button>
       </div>
       <label class="k" style="display:block;margin:10px 0 6px">Destination — country &amp; place / postal code</label>
       <div class="row">
@@ -806,7 +807,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       </div>
       <div class="row"><label class="btn sm" for="share-photo">📷 Add my photo (optional)</label><input type="file" id="share-photo" accept="image/*" style="display:none"><span class="small muted" id="photo-state" style="align-self:center"></span></div>
       <div class="row"><button class="btn sm" id="relay-only" aria-pressed="false" title="Force the P2P connection through the relay (TURN) so your real IP is never exposed to the other person — important behind a VPN. Needs a working TURN server.">🛡️ Hide my IP (relay-only)</button><span class="small muted" id="relayonly-state" style="align-self:center"></span></div>
-      <p class="small muted" style="margin:2px 0 0">Note: your <b>GPS</b> position is read from satellites, so a VPN can't change it — switch <b>My location</b> to <b>IP address</b> to appear at your VPN's location instead. “Hide my IP” stops WebRTC from leaking your real IP to the other person.</p>
+      <p class="small muted" style="margin:2px 0 0"><b>Privacy:</b> pick a <b>My location</b> mode above — <b>GPS</b> shares your exact spot, <b>IP</b> shares your network/VPN location, <b>Masked</b> lets you navigate exactly but shares a ~1 km-fuzzed position (hidden from the other person, area still known). <b>Hide my IP</b> keeps WebRTC from leaking your real IP. (Switching your actual ISP / VPN / Private&nbsp;DNS is a phone setting the app can't control — use your VPN app and Android Private DNS for that; the app follows whatever network the phone is on.)</p>
       <div class="row">
         <button class="btn go sm" id="share-loc">Share location</button>
         <button class="btn sm" id="t-video" aria-pressed="false">📹 Video feed</button>
@@ -1026,7 +1027,8 @@ function distKm(a,b,c,d){ const h=Math.sin((c-a)*R/2)**2+Math.cos(a*R)*Math.cos(
 const compassName=d=>['N','NE','E','SE','S','SW','W','NW'][Math.round(d/45)%8];
 
 // ---------- state ----------
-let me=null, dest=null, heading=null, pickMode=false;
+let me=null, dest=null, heading=null, pickMode=false, shareMask=false;
+const coarse=v=>Math.round(v/0.01)*0.01;   // ~1.1 km grid for masked sharing
 
 // ---------- map ----------
 const map=L.map('map',{zoomControl:true}).setView([13.1,-59.6],13);
@@ -1120,8 +1122,10 @@ async function useIp(){
     else alert('IP location unavailable from the relay.');
   }catch(e){ alert('IP location failed — check the relay URL.'); $('#fix-src').textContent=''; }
 }
-$('#loc-gps').onclick=()=>{ $('#loc-gps').classList.add('on'); $('#loc-ip').classList.remove('on'); startGps(); };
-$('#loc-ip').onclick=()=>{ $('#loc-ip').classList.add('on'); $('#loc-gps').classList.remove('on'); useIp(); };
+function setLocBtns(id){ ['loc-gps','loc-ip','loc-mask'].forEach(x=>{ const b=$('#'+x); if(b) b.classList.toggle('on', x===id); }); }
+$('#loc-gps').onclick=()=>{ setLocBtns('loc-gps'); shareMask=false; startGps(); };
+$('#loc-ip').onclick=()=>{ setLocBtns('loc-ip'); shareMask=false; useIp(); };
+$('#loc-mask') && ($('#loc-mask').onclick=()=>{ setLocBtns('loc-mask'); shareMask=true; startGps(); if(me&&window.SHARE){ const sl={lat:coarse(me.lat),lon:coarse(me.lon)}; window.SHARE.updateLocation({lat:sl.lat,lon:sl.lon,grid:toGrid(sl.lat,sl.lon),acc:1100,ts:Date.now()}); } });
 
 // ---------- position ----------
 function fmtSpeed(mps){ if(mps==null) return '—'; const k=mps*3.6; return k.toFixed(k<10?1:0)+' <small>km/h</small> · '+(mps*1.94384).toFixed(0)+' <small>kn</small>'; }
@@ -1136,7 +1140,8 @@ function onPos(p){ const c=p.coords; me={lat:c.latitude,lon:c.longitude};
   $('#fix-src').textContent='Fix updated '+new Date().toLocaleTimeString()+(c.altitudeAccuracy?(' · altitude ±'+Math.round(c.altitudeAccuracy)+' m'):'');
   if(meMarker)meMarker.setLatLng([me.lat,me.lon]); else { meMarker=L.circleMarker([me.lat,me.lon],{radius:8,color:'#fff',weight:2,fillColor:'#36c4ff',fillOpacity:1}).addTo(map).bindTooltip('You'); map.setView([me.lat,me.lon],15); }
   draw(); updateNav(); loadLandmarksThrottled();
-  if (window.SHARE) window.SHARE.updateLocation({lat:me.lat,lon:me.lon,grid:toGrid(me.lat,me.lon),alt:c.altitude,spd:c.speed,acc:c.accuracy,ts:Date.now()});
+  if (window.SHARE){ const sl = shareMask ? {lat:coarse(me.lat),lon:coarse(me.lon)} : {lat:me.lat,lon:me.lon};
+    window.SHARE.updateLocation({lat:sl.lat,lon:sl.lon,grid:toGrid(sl.lat,sl.lon),alt:shareMask?null:c.altitude,spd:shareMask?null:c.speed,acc:shareMask?1100:c.accuracy,ts:Date.now()}); }
 }
 function onPosErr(e){ $('#gps-warn').hidden=false; $('#gps-warn').textContent='Location unavailable: '+e.message+'. Allow location and try outdoors, or use IP address.'; }
 startGps();   // default to GPS; user can switch to IP
