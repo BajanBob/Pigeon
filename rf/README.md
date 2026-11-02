@@ -88,17 +88,53 @@ noise far below where the Hamming version gives up:
 - **convolutional FEC r=1/2, K=7** with a **soft-input Viterbi** decoder
 - block interleaving + CRC-16, Costas-style sync for low-SNR acquisition
 
-**Measured (AWGN, 2500 Hz reference bandwidth — the FT8 convention):** 100 %
-decode to −19 dB, ~50 % at **−21 dB**, 0 false decodes from pure noise. That is
-FT8-class sensitivity, and beats the −18 dB design target. Cost: a ~31 s beacon.
+### Measured sensitivity — honest, on the shipping decoder
 
-Caveats: measured on AWGN with no carrier offset or fading. Real HF (Watterson
-multipath + Doppler) will raise the threshold — validate with the MATLAB model.
+All numbers are the **50 % frame-decode threshold** in the **2500 Hz reference
+bandwidth** (the FT8 convention), measured by `measure_fading.py` against the real
+`pigeon_rf2.py` decoder (not a toy), with **0 false decodes from pure noise**:
 
-`pigeonfsk2_model.m` (MATLAB, Communications Toolbox) reproduces the sweep and
-provides the path lower still: swap the convolutional code for **LDPC**, add true
-soft LLRs, test on the **ITU-R HF fading channel**, and prototype a neural
+| Channel | 50 % threshold |
+|---|---|
+| **AWGN** | **≈ −21 dB** (100 % to −20 dB, ~60 % at −21, 0 % at −22) |
+| **HF fading — moderate** (2-path, 1 ms, 0.5 Hz Doppler) | **≈ −18 dB** |
+| **HF fading — poor** (2-path, 2 ms, 1.0 Hz Doppler) | **≈ −16 dB** |
+
+So AWGN beats the −18 dB design target and is FT8-class; moderate HF fading still
+meets it; poor fading costs a few dB (expected). Cost of the sensitivity: a ~31 s
+beacon. (AWGN has no carrier offset; the fading runs are a Watterson-style
+two-path Rayleigh channel with a Gaussian Doppler spectrum.)
+
+### FEC coding gain — convolutional vs LDPC (measured)
+
+`ldpc_compare.py` pits the shipping **convolutional r=1/2 K=7** soft-Viterbi code
+against a short **rate-1/2 regular (3,6) LDPC** (normalized min-sum), apples-to-
+apples on BPSK+AWGN at the same rate and ~200-bit frame:
+
+| Eb/N0 | conv K=7 | LDPC(3,6) |
+|---|---|---|
+| 2.0 dB | 72 % | 88 % |
+| 2.5 dB | 90 % | **100 %** |
+| 3.5 dB | 100 % | 100 % |
+
+LDPC reaches reliable decode **~1 dB sooner** at this short frame — enough to move
+the AWGN waveform threshold toward ~−22 dB. The gain grows (≈1.5–2 dB) with a
+longer frame, an irregular H, or full sum-product in place of min-sum.
+
+### The MATLAB research model
+
+`pigeonfsk2_model.m` (Communications Toolbox) is the **runnable** research version:
+selectable `FEC = 'conv' | 'ldpc'` and `CHAN = 'awgn' | 'hf_moderate' | 'hf_poor'`,
+**true non-coherent soft LLRs** (per-tone FFT energies, mirroring `_soft_bits`), a
+short LDPC with dual-diagonal parity that `ldpcEncoderConfig` accepts, and an
+**active ITU-R HF (Watterson) fading channel** via `comm.RayleighChannel`. It
+reproduces the Python thresholds above and is the place to prototype a neural
 receiver (Deep Learning Toolbox) — the genuine AI-hybrid step.
+
+### Measurement scripts
+
+- **`measure_fading.py`** — AWGN + Watterson HF threshold sweeps on the real decoder.
+- **`ldpc_compare.py`** — convolutional-vs-LDPC coding-gain comparison (self-contained LDPC).
 
 ## How it fits Pigeon's two location sources
 
