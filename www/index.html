@@ -807,7 +807,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
       </div>
       <div class="row"><label class="btn sm" for="share-photo">📷 Add my photo (optional)</label><input type="file" id="share-photo" accept="image/*" style="display:none"><span class="small muted" id="photo-state" style="align-self:center"></span></div>
       <div class="row"><button class="btn sm" id="relay-only" aria-pressed="false" title="Force the P2P connection through the relay (TURN) so your real IP is never exposed to the other person — important behind a VPN. Needs a working TURN server.">🛡️ Hide my IP (relay-only)</button><span class="small muted" id="relayonly-state" style="align-self:center"></span></div>
-      <p class="small muted" style="margin:2px 0 0"><b>Privacy:</b> pick a <b>My location</b> mode above — <b>GPS</b> shares your exact spot, <b>IP</b> shares your network/VPN location, <b>Masked</b> lets you navigate exactly but shares a ~1 km-fuzzed position (hidden from the other person, area still known). <b>Hide my IP</b> keeps WebRTC from leaking your real IP. (Switching your actual ISP / VPN / Private&nbsp;DNS is a phone setting the app can't control — use your VPN app and Android Private DNS for that; the app follows whatever network the phone is on.)</p>
+      <p class="small muted" style="margin:2px 0 0"><b>Privacy:</b> pick a <b>My location</b> mode above — <b>GPS</b> shares your exact spot, <b>IP</b> shares your network/VPN location, <b>Masked</b> lets you navigate exactly but shares a ~1 km-fuzzed position (hidden from the other person, area still known). <b>Hide my IP</b> keeps WebRTC from leaking your real IP.</p>
+      <details style="margin-top:8px">
+        <summary class="small" style="cursor:pointer;color:var(--accent2,#36c4ff)">⚙️ Advanced: TURN server &amp; phone settings</summary>
+        <div style="margin-top:8px">
+          <label class="k" style="display:block;margin-bottom:5px">TURN server — makes “Hide my IP” reliable</label>
+          <input class="in" id="turn-url" placeholder="turn:global.relay.metered.ca:443" style="font-size:13px">
+          <div class="row" style="margin-top:6px">
+            <input class="in" id="turn-user" placeholder="username" style="font-size:13px;flex:1;min-width:0">
+            <input class="in" id="turn-cred" placeholder="credential" style="font-size:13px;flex:1;min-width:0">
+          </div>
+          <div class="row"><button class="btn sm" id="turn-save">Save TURN</button><span class="small muted" id="turn-state" style="align-self:center"></span></div>
+          <p class="small muted" style="margin:6px 0 0">Relay-only needs a working TURN server. <b>metered.ca</b> (Open Relay) gives a <b>free tier (~50 GB/month)</b>: sign up at metered.ca → create an app → copy your <b>turn:</b> URL, username &amp; credential → paste them here. Without your own, the app falls back to a shared free TURN that can be slow or down.</p>
+          <label class="k" style="display:block;margin:10px 0 4px">Turn these on in your phone (the app can't)</label>
+          <ul class="small muted" style="margin:0;padding-left:18px;line-height:1.55">
+            <li><b>VPN:</b> connect your VPN app (e.g. NordVPN) — the app then follows that route.</li>
+            <li><b>Private DNS:</b> Android → <i>Settings → Network &amp; internet → Private DNS</i> → “Provider hostname” (e.g. <i>one.one.one.one</i> or <i>dns.nextdns.io</i>).</li>
+            <li><b>Location permission:</b> keep it allowed — GPS needs it; Masked still shares only a fuzzed point.</li>
+          </ul>
+        </div>
+      </details>
       <div class="row">
         <button class="btn go sm" id="share-loc">Share location</button>
         <button class="btn sm" id="t-video" aria-pressed="false">📹 Video feed</button>
@@ -1224,9 +1243,12 @@ const SHARE = (function(){
   async function dec(buf){ const u=new Uint8Array(buf); const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(0,12)},key,u.slice(12)); return JSON.parse(new TextDecoder().decode(pt)); }
 
   const privRelayOnly=()=>{ try{ return localStorage.getItem('pigeon-relayonly')==='1'; }catch(e){ return false; } };
-  async function iceConf(){ const pol = privRelayOnly()?'relay':'all';
-    try{ const r=await fetch(relay()+'/ice'); const j=await r.json(); return {iceServers:j.iceServers||[], iceTransportPolicy:pol}; }
-    catch(e){ return {iceServers:[{urls:'stun:stun.l.google.com:19302'}], iceTransportPolicy:pol}; } }
+  const customTurn=()=>{ try{ const t=JSON.parse(localStorage.getItem('pigeon-turn')||'null'); return (t&&t.urls)?t:null; }catch(e){ return null; } };
+  async function iceConf(){ const pol = privRelayOnly()?'relay':'all'; let servers;
+    try{ const r=await fetch(relay()+'/ice'); const j=await r.json(); servers=j.iceServers||[]; }
+    catch(e){ servers=[{urls:'stun:stun.l.google.com:19302'}]; }
+    const ct=customTurn(); if(ct) servers=[ct, ...servers];     // your own TURN (e.g. metered.ca) takes priority
+    return {iceServers:servers, iceTransportPolicy:pol}; }
   async function post(type,data){ try{ await fetch(relay()+'/room/'+room,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({from:role,type,data})}); }catch(e){} }
   function startPoll(){ stopPoll(); pollT=setInterval(async()=>{ try{ const r=await fetch(relay()+'/room/'+room+'?role='+role+'&since='+cursor); const j=await r.json(); for(const m of (j.msgs||[])){ cursor=Math.max(cursor,m.seq); await handle(m); } }catch(e){} }, 1000); }
   function stopPoll(){ if(pollT)clearInterval(pollT); pollT=null; }
@@ -1324,6 +1346,13 @@ window.SHARE = SHARE;
     const render=()=>{ const v=on(); b.classList.toggle('on',v); b.setAttribute('aria-pressed',v?'true':'false'); if(st) st.textContent=v?'On — real IP hidden via relay':'Off — direct connection may expose your IP'; };
     b.onclick=()=>{ try{ localStorage.setItem('pigeon-relayonly', on()?'0':'1'); }catch(e){} render(); };
     render();
+  })();
+  // custom TURN server (e.g. metered.ca) so relay-only is reliable
+  (function(){ const u=$('#turn-url'); if(!u) return; const us=$('#turn-user'), cr=$('#turn-cred'), st=$('#turn-state');
+    try{ const t=JSON.parse(localStorage.getItem('pigeon-turn')||'null'); if(t){ u.value=t.urls||''; us.value=t.username||''; cr.value=t.credential||''; if(st) st.textContent='Custom TURN active'; } }catch(e){}
+    $('#turn-save').onclick=()=>{ const urls=u.value.trim();
+      if(!urls){ try{localStorage.removeItem('pigeon-turn');}catch(e){} st.textContent='Cleared — using default TURN.'; return; }
+      const t={urls, username:us.value.trim(), credential:cr.value.trim()}; try{localStorage.setItem('pigeon-turn',JSON.stringify(t));}catch(e){} st.textContent='TURN saved ✓'; };
   })();
   async function toggleFeed(which){
     if(which==='v'){ vOn=!vOn; if(vOn && window.__pigeonAskCamera) window.__pigeonAskCamera(); }
