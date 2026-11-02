@@ -771,7 +771,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       </div>
       <div class="row">
         <button class="btn go sm" id="set-dest">Set destination</button>
-        <button class="btn sm" id="pick">Tap map to pick</button>
+        <button class="btn sm" id="pick">📍 Pick on map</button>
         <button class="btn sm" id="clear-dest">Clear</button>
       </div>
       <div class="cinfo" style="margin-top:14px">
@@ -779,7 +779,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <div class="stat" style="margin-top:8px"><div class="k">Distance to destination</div><div class="v big" id="distv">—</div></div>
         <div class="stat" style="margin-top:8px"><div class="k">ETA at current speed</div><div class="v" id="eta">—</div></div>
       </div>
-      <p class="small muted" style="margin:10px 0 0">Choose your country, enter the destination's zip / postal code, and tap <b>Set destination</b>. Your own position comes from GPS, or tap <b>IP address</b> to locate this device by its network. Tap the screen once to enable the heading sensor.</p>
+      <p class="small muted" style="margin:10px 0 0">Choose your country, enter the destination's zip / postal code, and tap <b>Set destination</b> — or just <b>tap anywhere on the map</b> below to drop a destination pin. Your own position comes from GPS, or tap <b>IP address</b> to locate this device by its network. Tap the screen once to enable the heading sensor.</p>
     </section>
 
     <section class="card">
@@ -1060,7 +1060,13 @@ if(rfBtn) rfBtn.onclick=()=>{
   if(rfOn){ rfLayer.addTo(map); pollRF(); rfTimer=setInterval(pollRF,20000); }
   else { clearInterval(rfTimer); map.removeLayer(rfLayer); }
 };
-map.on('click',e=>{ if(pickMode){ setDest(e.latlng.lat,e.latlng.lng); pickMode=false; $('#pick').textContent='Tap map to pick'; }});
+// Tap anywhere on the map to drop a destination pin (no arming needed; a drag/pan won't trigger this).
+map.on('click',e=>{ setDest(e.latlng.lat,e.latlng.lng); const pk=$('#pick'); if(pk){ pk.textContent='📍 Destination set ✓'; setTimeout(()=>pk.textContent='📍 Pick on map',1600); } });
+// keep map geometry correct on mobile (layout shifts, rotation, scrolling into view)
+map.whenReady(()=>setTimeout(()=>map.invalidateSize(),200));
+window.addEventListener('resize',()=>map.invalidateSize());
+window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
+try{ new IntersectionObserver(es=>{ if(es.some(x=>x.isIntersecting)) map.invalidateSize(); }).observe(document.querySelector('.map-wrap')); }catch(e){}
 
 // ---------- destination (grid square · postal code · place name · coordinates) ----------
 // ---- destination: country dropdown + zip/postal code (geocoded) ----
@@ -1085,7 +1091,7 @@ $('#set-dest').onclick=async()=>{
   if(!p) return alert('Couldn’t find that zip / postal code in the selected country — check the code and the country.');
   setDest(p[0],p[1]); map.setView([p[0],p[1]],Math.max(map.getZoom(),12));
 };
-$('#pick').onclick=()=>{ pickMode=!pickMode; $('#pick').textContent=pickMode?'Tap the map…':'Tap map to pick'; };
+$('#pick').onclick=()=>{ const w=document.querySelector('.map-wrap'); if(w) w.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(()=>map.invalidateSize(),350); $('#pick').textContent='Tap anywhere on the map…'; setTimeout(()=>$('#pick').textContent='📍 Pick on map',2000); };
 $('#clear-dest').onclick=()=>{ dest=null; if(destMarker){map.removeLayer(destMarker);destMarker=null;} if(lineLayer){map.removeLayer(lineLayer);lineLayer=null;} ['distv','eta'].forEach(id=>$('#'+id).textContent='—'); };
 
 // ---- device location: GPS (default) or IP address ----
