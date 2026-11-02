@@ -865,6 +865,51 @@ svg.leaflet-image-layer.leaflet-interactive path {
       </div>
     </section>
 
+    <section class="card" id="door-card">
+      <h2>Pigeon keys — direct calls (the Door) <span class="st-help" tabindex="0" data-help="Swap a one-time Pigeon Code with someone (by WhatsApp/text — no call is happening, so leaving the app is fine). After that, call directly with no link to send, so the handshake never breaks.">?</span></h2>
+      <p class="small muted">Trade a one-time <b>Pigeon Code</b> (a scrambled 256-bit key + private room) with someone <b>ahead of time</b>. Once you've each added the other's code, call straight from here — <b>no link to send at call time</b>, so the connection can't be broken by leaving the app.</p>
+      <div class="st-tabs">
+        <button class="st-chip on" data-doortab="contacts">Contacts</button>
+        <button class="st-chip" data-doortab="create">Create a code</button>
+        <button class="st-chip" data-doortab="add">Add a code</button>
+      </div>
+
+      <div id="door-contacts" style="margin-top:8px">
+        <div class="row"><button class="btn sm" id="avail-toggle" aria-pressed="false" title="Listen for incoming calls from your contacts">🟢 Available for calls</button><span class="small muted" id="avail-state" style="align-self:center">Off</span></div>
+        <div id="contact-list" style="margin-top:8px"></div>
+        <div id="incoming" hidden style="margin-top:8px"></div>
+      </div>
+
+      <div id="door-create" style="display:none;margin-top:8px">
+        <label>Name this contact (who you're giving it to)</label>
+        <input class="in" id="create-name" placeholder="e.g. Bob">
+        <div class="row"><button class="btn go sm" id="create-code">Generate Pigeon Code</button></div>
+        <div id="create-out" style="margin-top:8px"></div>
+      </div>
+
+      <div id="door-add" style="display:none;margin-top:8px">
+        <label>Paste the Pigeon Code you were sent</label>
+        <input class="in" id="add-code" placeholder="Pigeon Code…" style="font-size:12px">
+        <label>Name this contact</label>
+        <input class="in" id="add-name" placeholder="e.g. Alice">
+        <div class="row"><button class="btn go sm" id="add-save">Add contact</button><span class="small muted" id="add-state" style="align-self:center"></span></div>
+      </div>
+
+      <div id="call-box" hidden style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+        <p class="big" id="call-title" style="font-size:18px">Call</p>
+        <video id="call-remote-video" playsinline autoplay style="width:100%;border-radius:12px;background:#000;display:none"></video>
+        <div id="call-remote-audio" class="row" style="display:none;align-items:center;gap:8px;margin-top:6px"><span style="font-size:18px">🔊</span><span class="small muted">Live audio</span></div>
+        <video id="call-self-video" playsinline autoplay muted style="width:38%;border-radius:8px;margin-top:6px;display:none"></video>
+        <p class="small" id="call-state" style="color:var(--accent2,#36c4ff)"></p>
+        <div class="row">
+          <button class="btn sm" id="call-video" aria-pressed="false">📹 Video</button>
+          <button class="btn sm" id="call-audio" aria-pressed="false">🎙️ Audio</button>
+          <button class="btn sm" id="call-hangup">⏹ Hang up</button>
+        </div>
+        <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">🔧 Connection diagnostics</summary><pre class="diag-log" style="white-space:pre-wrap;word-break:break-word;font:11px var(--mono);color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;max-height:160px;overflow:auto"></pre></details>
+      </div>
+    </section>
+
     <section class="card" id="stealth-card">
       <h2>Stealth message <span class="st-help" tabindex="0" data-help="PLUMAGE: encrypt a message and scatter it across innocent media. The reader needs every carrier + the pass-phrase.">?</span></h2>
       <p class="small muted">Encrypt a message and hide the pieces inside ordinary-looking files (a picture, a tone, a note). Send all the files any way you like — only someone with them all <strong>and</strong> the pass-phrase can read it. On-device, AES-256.</p>
@@ -1367,10 +1412,24 @@ const SHARE = (function(){
   }
   function updateLocation(loc){ lastLoc=loc; sendLoc(loc); }
   function stop(){ stopPoll(); clearInterval(locT); if(reqT){clearInterval(reqT);reqT=null;} try{dc&&dc.close();}catch(e){} try{pc&&pc.close();}catch(e){} if(localStream)localStream.getTracks().forEach(t=>t.stop()); pc=dc=null; role=null; vTx=aTx=null; offered=false; diag('stopped'); }
+
+  /* ---------- Paired direct calls (the Door): a fixed, pre-shared room+key, so NO link is sent at call time ---------- */
+  async function callPaired(roomId, rawKey, mediaOpts, callbacks){   // caller: offer straight into the shared room
+    stop(); role='host'; cbs=callbacks||{}; media=mediaOpts||{}; offered=true; approving=false;
+    room=roomId; key=await importKey(rawKey); cursor=0; remoteSet=false;
+    startPoll(); diag('calling — room '+room.slice(0,8));
+    await approve();
+  }
+  async function answerPaired(roomId, rawKey, offer, sinceSeq, callbacks){   // callee: answer an incoming offer on a shared room
+    stop(); role='guest'; cbs=callbacks||{};
+    room=roomId; key=await importKey(rawKey); cursor=sinceSeq||0; remoteSet=false;
+    startPoll(); diag('answering — room '+room.slice(0,8));
+    await onOffer(offer);
+  }
   // When the app returns to the foreground, make sure we're still polling (mobile suspends background timers).
   if(typeof document!=='undefined') document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible' && role && (!pc || pc.connectionState!=='connected')){ if(!pollT){ startPoll(); diag('back in foreground — polling resumed'); } } });
-  return { startShare, approve, view, updateLocation, setMedia, stop };
+  return { startShare, approve, view, updateLocation, setMedia, stop, callPaired, answerPaired, importKey, b64u, unb64u };
 })();
 window.SHARE = SHARE;
 
@@ -1503,6 +1562,96 @@ window.SHARE = SHARE;
       });
     };
   }
+})();
+</script>
+<script>
+/* ---------- Pigeon Keys / the Door: paired direct calls (no link at call time) ---------- */
+(function(){
+  if(!window.SHARE) return;
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+  const b64u=SHARE.b64u, unb64u=SHARE.unb64u;
+  const esc2=v=>String(v==null?'':v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+  const relay=()=> (CONFIG.relay||'').replace(/\/+$/,'');
+  const load=()=>{ try{ return JSON.parse(localStorage.getItem('pigeon-contacts')||'[]'); }catch(e){ return []; } };
+  const save=(c)=>{ try{ localStorage.setItem('pigeon-contacts',JSON.stringify(c)); }catch(e){} };
+
+  // tabs
+  $$('#door-card .st-tabs button').forEach(b=>b.onclick=()=>{ $$('#door-card .st-tabs button').forEach(x=>x.classList.toggle('on',x===b)); const t=b.dataset.doortab;
+    $('#door-contacts').style.display=t==='contacts'?'':'none'; $('#door-create').style.display=t==='create'?'':'none'; $('#door-add').style.display=t==='add'?'':'none'; });
+
+  // Pigeon Code = base64url of [room 9B][key 32B][name…]
+  function makeCode(name){ const roomB=crypto.getRandomValues(new Uint8Array(9)), keyB=crypto.getRandomValues(new Uint8Array(32)), nameB=new TextEncoder().encode(name||''); const all=new Uint8Array(41+nameB.length); all.set(roomB,0); all.set(keyB,9); all.set(nameB,41); return { code:b64u(all), room:b64u(roomB), key:b64u(keyB) }; }
+  function parseCode(code){ const all=unb64u(code.trim()); if(all.length<41) throw new Error('bad'); return { room:b64u(all.slice(0,9)), key:b64u(all.slice(9,41)), name:new TextDecoder().decode(all.slice(41)) }; }
+
+  function renderContacts(){ const c=load(), list=$('#contact-list'); if(!list) return;
+    if(!c.length){ list.innerHTML='<p class="small muted">No contacts yet. <b>Create a code</b> to give someone, or <b>Add a code</b> you were sent.</p>'; return; }
+    list.innerHTML=c.map((x,i)=>'<div class="st-carrier"><span style="flex:1"><b>'+esc2(x.name)+'</b><br><span class="small muted">room '+x.room.slice(0,8)+'</span></span><button class="btn sm go" data-call="'+i+'">📞 Call</button> <button class="btn sm" data-del="'+i+'">🗑</button></div>').join('');
+    list.querySelectorAll('[data-call]').forEach(b=>b.onclick=()=>startCall(load()[+b.dataset.call]));
+    list.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const c2=load(); c2.splice(+b.dataset.del,1); save(c2); renderContacts(); }); }
+
+  $('#create-code').onclick=()=>{ const name=($('#create-name').value||'').trim()||'Contact'; const m=makeCode(name); const c=load(); c.push({name,room:m.room,key:m.key}); save(c);
+    $('#create-out').innerHTML='<p class="small" style="color:var(--ok,#39d98a)">Send this Pigeon Code to '+esc2(name)+' by WhatsApp/text — they paste it under “Add a code”. (Safe to leave the app now.)</p><div class="out" style="word-break:break-all">'+m.code+'</div>';
+    const copy=document.createElement('button'); copy.className='btn sm'; copy.textContent='Copy code'; copy.onclick=()=>{ navigator.clipboard?.writeText(m.code); copy.textContent='Copied ✓'; }; $('#create-out').appendChild(copy);
+    $('#create-name').value=''; renderContacts(); };
+
+  $('#add-save').onclick=()=>{ try{ const p=parseCode($('#add-code').value); const name=($('#add-name').value||'').trim()||p.name||'Contact'; const c=load(); c.push({name,room:p.room,key:p.key}); save(c); $('#add-state').textContent='Added ✓'; $('#add-code').value=''; $('#add-name').value=''; renderContacts(); }catch(e){ $('#add-state').textContent='That doesn’t look like a Pigeon Code'; } };
+
+  /* ---- call media (own preview) ---- */
+  let callV=false, callA=false, callPreview=null, inCall=false;
+  async function callReconcile(){ if(!callV&&!callA){ if(callPreview){callPreview.getTracks().forEach(t=>t.stop());callPreview=null;} const sv=$('#call-self-video'); sv.style.display='none'; sv.srcObject=null; return null; }
+    if(!callPreview) callPreview=new MediaStream();
+    const hasV=callPreview.getVideoTracks().length>0;
+    if(callV&&!hasV){ const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}); s.getVideoTracks().forEach(t=>callPreview.addTrack(t)); }
+    if(!callV&&hasV){ callPreview.getVideoTracks().forEach(t=>{t.stop();callPreview.removeTrack(t);}); }
+    const hasA=callPreview.getAudioTracks().length>0;
+    if(callA&&!hasA){ const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getAudioTracks().forEach(t=>callPreview.addTrack(t)); }
+    if(!callA&&hasA){ callPreview.getAudioTracks().forEach(t=>{t.stop();callPreview.removeTrack(t);}); }
+    const sv=$('#call-self-video'); if(callPreview.getVideoTracks().length){ sv.style.display=''; if(sv.srcObject!==callPreview) sv.srcObject=callPreview; } else { sv.style.display='none'; sv.srcObject=null; }
+    return callPreview; }
+  function reflectCall(){ $('#call-video').classList.toggle('on',callV); $('#call-audio').classList.toggle('on',callA); }
+  function callCbs(name){ return {
+    getMedia:()=>callReconcile(),
+    onState:(st)=>{ const e=$('#call-state'); if(e) e.textContent = (st==='connected'||st==='linked')?'Connected — live with '+name+'.':st==='failed'?'Connection failed — tap Call again.':('…'+st); },
+    onStream:(stream)=>{ const v=$('#call-remote-video'); if(v && v.srcObject!==stream){ v.srcObject=stream; v.muted=false; v.play&&v.play().catch(()=>{}); } },
+    onMedia:(kind,on)=>{ if(kind==='video'){ const v=$('#call-remote-video'); if(v) v.style.display=on?'':'none'; } if(kind==='audio'){ const a=$('#call-remote-audio'); if(a) a.style.display=on?'':'none'; } }
+  }; }
+  function openCallBox(title){ $('#call-box').hidden=false; $('#call-title').textContent=title; $('#call-state').textContent='connecting…'; $('#call-remote-video').style.display='none'; $('#call-remote-audio').style.display='none'; try{ $('#call-box').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} }
+
+  async function startCall(ct){ if(!ct) return; stopAvail(); inCall=true; callA=true; callV=false; reflectCall();
+    openCallBox('Calling '+ct.name+'…');
+    try{ await callReconcile(); }catch(e){ callA=false; reflectCall(); }
+    await SHARE.callPaired(ct.room, unb64u(ct.key), {video:callV,audio:callA}, callCbs(ct.name));
+    $('#call-title').textContent='Call with '+ct.name; }
+
+  async function answer(ct, offer, seq){ stopAvail(); inCall=true; callA=true; callV=false; reflectCall();
+    openCallBox('Call with '+ct.name);
+    try{ await callReconcile(); }catch(e){ callA=false; reflectCall(); }
+    await SHARE.answerPaired(ct.room, unb64u(ct.key), offer, seq, callCbs(ct.name)); }
+
+  $('#call-video').onclick=async()=>{ callV=!callV; reflectCall(); try{ await callReconcile(); await SHARE.setMedia({video:callV,audio:callA}); }catch(e){ callV=false; reflectCall(); alert('Camera blocked — allow it in phone settings.'); } };
+  $('#call-audio').onclick=async()=>{ callA=!callA; reflectCall(); try{ await callReconcile(); await SHARE.setMedia({video:callV,audio:callA}); }catch(e){ callA=false; reflectCall(); alert('Microphone blocked — allow it in phone settings.'); } };
+  $('#call-hangup').onclick=()=>{ SHARE.stop(); endCall(); };
+  function endCall(){ inCall=false; if(callPreview){callPreview.getTracks().forEach(t=>t.stop());callPreview=null;} callV=callA=false; const cb=$('#call-box'); if(cb)cb.hidden=true; $('#call-remote-video').srcObject=null; $('#call-self-video').srcObject=null; if(availWanted) startAvail(); }
+
+  /* ---- "Available for calls": poll every contact's room for an incoming offer ---- */
+  let availWanted=false, availT=null; const availCur={};
+  function startAvail(){ const c=load(); stopTimer(); availWanted=true; $('#avail-toggle').classList.add('on'); $('#avail-toggle').setAttribute('aria-pressed','true'); $('#avail-state').textContent=c.length?'Listening for calls…':'No contacts yet';
+    availT=setInterval(async()=>{ if(inCall) return; const contacts=load();
+      for(const ct of contacts){ try{ const since=availCur[ct.room]||0; const r=await fetch(relay()+'/room/'+ct.room+'?role=guest&since='+since); const j=await r.json();
+        for(const m of (j.msgs||[])){ availCur[ct.room]=Math.max(availCur[ct.room]||0,m.seq); if(m.type==='offer'){ incomingCall(ct,m.data,m.seq); return; } } }catch(e){} } }, 2500); }
+  function stopTimer(){ if(availT){clearInterval(availT);availT=null;} }
+  function stopAvail(){ availWanted=false; stopTimer(); $('#avail-toggle').classList.remove('on'); $('#avail-toggle').setAttribute('aria-pressed','false'); $('#avail-state').textContent='Off'; }
+  $('#avail-toggle').onclick=()=>{ if(availWanted) stopAvail(); else startAvail(); };
+
+  function incomingCall(ct, offer, seq){ if(inCall) return; stopTimer();
+    const box=$('#incoming'); box.hidden=false;
+    box.innerHTML='<div class="warn" style="background:#0e2a1a;border-color:#1f6b3f;color:#bfeccd">📞 Incoming call from <b>'+esc2(ct.name)+'</b></div>';
+    const row=document.createElement('div'); row.className='row';
+    const a=document.createElement('button'); a.className='btn go sm'; a.textContent='✅ Accept'; a.onclick=()=>{ box.hidden=true; box.innerHTML=''; answer(ct,offer,seq); };
+    const d=document.createElement('button'); d.className='btn sm'; d.textContent='✖ Decline'; d.onclick=()=>{ box.hidden=true; box.innerHTML=''; if(availWanted) startAvail(); };
+    row.appendChild(a); row.appendChild(d); box.appendChild(row); }
+
+  renderContacts();
 })();
 </script>
 <script>
