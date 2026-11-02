@@ -764,10 +764,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <button id="loc-gps" class="on" title="Use the phone's GPS/GNSS fix (most accurate)">📡 GPS</button>
         <button id="loc-ip" title="Locate this device by its internet (IP) address — approximate">🌐 IP address</button>
       </div>
-      <label class="k" style="display:block;margin:10px 0 6px">Destination — country &amp; zip / postal code</label>
+      <label class="k" style="display:block;margin:10px 0 6px">Destination — country &amp; place / postal code</label>
       <div class="row">
         <select class="in" id="dest-country" style="flex:0 0 auto;max-width:54%"></select>
-        <input class="in" id="dest-zip" placeholder="Zip / postal code" autocomplete="off" spellcheck="false">
+        <input class="in" id="dest-zip" placeholder="Town, area, address or zip" autocomplete="off" spellcheck="false">
       </div>
       <div class="row">
         <button class="btn go sm" id="set-dest">Set destination</button>
@@ -779,7 +779,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <div class="stat" style="margin-top:8px"><div class="k">Distance to destination</div><div class="v big" id="distv">—</div></div>
         <div class="stat" style="margin-top:8px"><div class="k">ETA at current speed</div><div class="v" id="eta">—</div></div>
       </div>
-      <p class="small muted" style="margin:10px 0 0">Choose your country, enter the destination's zip / postal code, and tap <b>Set destination</b> — or just <b>tap anywhere on the map</b> below to drop a destination pin. Your own position comes from GPS, or tap <b>IP address</b> to locate this device by its network. Tap the screen once to enable the heading sensor.</p>
+      <p class="small muted" style="margin:10px 0 0">Choose the country, type a <b>town, area, address or postal code</b>, and tap <b>Set destination</b> — or just <b>tap anywhere on the map</b> below to drop a pin. (Postal codes don't resolve everywhere — Barbados codes aren't in the free map data, so use a town/area or tap the map there.) Your own position comes from GPS, or tap <b>IP address</b>. Tap the screen once to enable the heading sensor.</p>
     </section>
 
     <section class="card">
@@ -1075,21 +1075,25 @@ const COUNTRIES=[["BB","Barbados"],["US","United States"],["CA","Canada"],["GB",
 function setDest(lat,lon){ dest={lat,lon};
   if(destMarker)destMarker.setLatLng([lat,lon]); else destMarker=L.marker([lat,lon]).addTo(map).bindTooltip('Destination');
   draw(); updateNav(); }
-async function geocodeZip(zip, cc){
+// Accepts a postal/zip code OR a town / area / address. Postal codes don't resolve
+// everywhere (e.g. Barbados isn't in the free map database), so we also try free text.
+async function geocodeZip(q, cc){
+  const cname=(COUNTRIES.find(c=>c[0]===cc)||[])[1]||'';
   const base='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes='+cc.toLowerCase();
-  let r=await fetch(base+'&postalcode='+encodeURIComponent(zip),{headers:{'Accept':'application/json'}}); let j=await r.json();
-  if(!(j&&j[0])){ r=await fetch(base+'&q='+encodeURIComponent(zip),{headers:{'Accept':'application/json'}}); j=await r.json(); }
-  if(j&&j[0]) return [parseFloat(j[0].lat),parseFloat(j[0].lon)];
-  return null;
+  const tryUrl=async u=>{ try{ const r=await fetch(u,{headers:{'Accept':'application/json'}}); const j=await r.json(); return (j&&j[0])?[parseFloat(j[0].lat),parseFloat(j[0].lon)]:null; }catch(e){ return null; } };
+  // 1) as a postal code, 2) as free text within the country, 3) free text + country name
+  return await tryUrl(base+'&postalcode='+encodeURIComponent(q))
+      || await tryUrl(base+'&q='+encodeURIComponent(q))
+      || await tryUrl('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(q+(cname?(', '+cname):'')));
 }
 $('#set-dest').onclick=async()=>{
-  const zip=$('#dest-zip').value.trim(), cc=$('#dest-country').value, btn=$('#set-dest');
-  if(!zip) return alert('Enter the destination zip / postal code.');
+  const q=$('#dest-zip').value.trim(), cc=$('#dest-country').value, btn=$('#set-dest');
+  if(!q) return alert('Enter a destination — a town, area, address, or postal/zip code.');
   btn.textContent='Searching…'; btn.disabled=true;
-  let p=null; try{ p=await geocodeZip(zip, cc); }catch(e){}
+  let p=null; try{ p=await geocodeZip(q, cc); }catch(e){}
   btn.textContent='Set destination'; btn.disabled=false;
-  if(!p) return alert('Couldn’t find that zip / postal code in the selected country — check the code and the country.');
-  setDest(p[0],p[1]); map.setView([p[0],p[1]],Math.max(map.getZoom(),12));
+  if(!p) return alert('Couldn’t find “'+q+'” in that country. Postal codes don’t resolve everywhere (Barbados codes aren’t in the free map data) — try a town, area or street (e.g. “Bridgetown” or “Holetown, St James”), or just tap the map to drop a pin.');
+  setDest(p[0],p[1]); map.setView([p[0],p[1]],Math.max(map.getZoom(),13));
 };
 $('#pick').onclick=()=>{ const w=document.querySelector('.map-wrap'); if(w) w.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(()=>map.invalidateSize(),350); $('#pick').textContent='Tap anywhere on the map…'; setTimeout(()=>$('#pick').textContent='📍 Pick on map',2000); };
 $('#clear-dest').onclick=()=>{ dest=null; if(destMarker){map.removeLayer(destMarker);destMarker=null;} if(lineLayer){map.removeLayer(lineLayer);lineLayer=null;} ['distv','eta'].forEach(id=>$('#'+id).textContent='—'); };
