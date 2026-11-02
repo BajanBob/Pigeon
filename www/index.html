@@ -689,7 +689,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .theme{margin-left:auto;display:flex;gap:6px}
   .tbtn{font:600 12px var(--body);border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:6px 11px;cursor:pointer}
   .tbtn.on{border-color:var(--accent);color:var(--accent)}
-  #t-video.on,#t-audio.on{border-color:var(--accent);color:var(--accent);font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
+  #t-video.on,#t-audio.on,#relay-only.on{border-color:var(--accent);color:var(--accent);font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
   .st-tabs{display:flex;gap:6px;margin-top:8px} .st-tabs button{flex:1}
   .st-chip{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:7px 11px;font:600 12px var(--body);cursor:pointer}
   .st-chip.on{border-color:var(--accent2,#36c4ff);color:var(--accent2,#36c4ff);box-shadow:inset 0 0 0 1px var(--accent2,#36c4ff)}
@@ -805,6 +805,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <button class="btn sm" id="relay-save">Save relay</button>
       </div>
       <div class="row"><label class="btn sm" for="share-photo">📷 Add my photo (optional)</label><input type="file" id="share-photo" accept="image/*" style="display:none"><span class="small muted" id="photo-state" style="align-self:center"></span></div>
+      <div class="row"><button class="btn sm" id="relay-only" aria-pressed="false" title="Force the P2P connection through the relay (TURN) so your real IP is never exposed to the other person — important behind a VPN. Needs a working TURN server.">🛡️ Hide my IP (relay-only)</button><span class="small muted" id="relayonly-state" style="align-self:center"></span></div>
+      <p class="small muted" style="margin:2px 0 0">Note: your <b>GPS</b> position is read from satellites, so a VPN can't change it — switch <b>My location</b> to <b>IP address</b> to appear at your VPN's location instead. “Hide my IP” stops WebRTC from leaking your real IP to the other person.</p>
       <div class="row">
         <button class="btn go sm" id="share-loc">Share location</button>
         <button class="btn sm" id="t-video" aria-pressed="false">📹 Video feed</button>
@@ -1216,7 +1218,10 @@ const SHARE = (function(){
   async function enc(obj){ const iv=crypto.getRandomValues(new Uint8Array(12)); const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj))); const out=new Uint8Array(12+ct.byteLength); out.set(iv); out.set(new Uint8Array(ct),12); return out.buffer; }
   async function dec(buf){ const u=new Uint8Array(buf); const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(0,12)},key,u.slice(12)); return JSON.parse(new TextDecoder().decode(pt)); }
 
-  async function iceConf(){ try{ const r=await fetch(relay()+'/ice'); const j=await r.json(); return {iceServers:j.iceServers||[]}; }catch(e){ return {iceServers:[{urls:'stun:stun.l.google.com:19302'}]}; } }
+  const privRelayOnly=()=>{ try{ return localStorage.getItem('pigeon-relayonly')==='1'; }catch(e){ return false; } };
+  async function iceConf(){ const pol = privRelayOnly()?'relay':'all';
+    try{ const r=await fetch(relay()+'/ice'); const j=await r.json(); return {iceServers:j.iceServers||[], iceTransportPolicy:pol}; }
+    catch(e){ return {iceServers:[{urls:'stun:stun.l.google.com:19302'}], iceTransportPolicy:pol}; } }
   async function post(type,data){ try{ await fetch(relay()+'/room/'+room,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({from:role,type,data})}); }catch(e){} }
   function startPoll(){ stopPoll(); pollT=setInterval(async()=>{ try{ const r=await fetch(relay()+'/room/'+room+'?role='+role+'&since='+cursor); const j=await r.json(); for(const m of (j.msgs||[])){ cursor=Math.max(cursor,m.seq); await handle(m); } }catch(e){} }, 1000); }
   function stopPoll(){ if(pollT)clearInterval(pollT); pollT=null; }
@@ -1307,6 +1312,13 @@ window.SHARE = SHARE;
   (function(){ const inp=$('#relay-url'); if(!inp) return;
     if(CONFIG.relay && !CONFIG.relay.includes('YOURNAME')){ inp.value=CONFIG.relay; $('#relay-row').style.opacity='.6'; }
     $('#relay-save').onclick=()=>{ const v=inp.value.trim(); if(!v) return; CONFIG.relay=v; try{localStorage.setItem('pigeon-relay',v);}catch(e){} $('#relay-row').style.opacity='.6'; $('#share-state')&&($('#share-state').textContent='Relay saved.'); };
+  })();
+  // privacy: relay-only (TURN) WebRTC so the real IP isn't exposed to the peer
+  (function(){ const b=$('#relay-only'); if(!b) return; const st=$('#relayonly-state');
+    const on=()=>{ try{ return localStorage.getItem('pigeon-relayonly')==='1'; }catch(e){ return false; } };
+    const render=()=>{ const v=on(); b.classList.toggle('on',v); b.setAttribute('aria-pressed',v?'true':'false'); if(st) st.textContent=v?'On — real IP hidden via relay':'Off — direct connection may expose your IP'; };
+    b.onclick=()=>{ try{ localStorage.setItem('pigeon-relayonly', on()?'0':'1'); }catch(e){} render(); };
+    render();
   })();
   async function toggleFeed(which){
     if(which==='v'){ vOn=!vOn; if(vOn && window.__pigeonAskCamera) window.__pigeonAskCamera(); }
