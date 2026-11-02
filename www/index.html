@@ -1248,7 +1248,7 @@ drawCompass();
 const CONFIG = { relay: (()=>{ try{ return localStorage.getItem('pigeon-relay'); }catch(e){ return null; } })() || window.__PIGEON_RELAY || 'https://pigeon-relay.macholder67.workers.dev' };
 
 const SHARE = (function(){
-  let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false, vTx=null, aTx=null, reqT=null, approving=false;
+  let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false, vTx=null, aTx=null, reqT=null, approving=false, lastOfferAt=0;
   const DIAG=[]; function diag(s){ const line=new Date().toLocaleTimeString()+' · '+s; DIAG.push(line); if(DIAG.length>60)DIAG.shift(); window.__pigeonDiag=DIAG; try{console.log('[pigeon]',s);}catch(e){} try{ document.querySelectorAll('.diag-log').forEach(el=>{ el.textContent=DIAG.slice(-14).join('\n'); el.scrollTop=el.scrollHeight; }); }catch(e){} cbs.onDiag&&cbs.onDiag(line); }
   const relay = ()=> (CONFIG.relay||'').replace(/\/+$/,'');
   const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -1271,8 +1271,10 @@ const SHARE = (function(){
   async function handle(m){
     if(m.type==='request' && role==='host'){ cbs.onRequest && cbs.onRequest(m.data||{});   // sender already consented by sending the link; viewer just accepts
       const st = pc ? pc.connectionState : null;
-      if(!approving && (!pc || st==='failed' || st==='disconnected' || st==='closed')){ approve().catch(e=>diag('approve failed: '+e.message)); }
-      else { diag('request ignored (already '+(st||'none')+')'); } }
+      // Re-answer if we have no live link: never connected, a dead pc, OR a pc stuck in new/connecting past 6s (a prior attempt that never completed).
+      const stale = !pc || st==='failed' || st==='disconnected' || st==='closed' || (st!=='connected' && (Date.now()-lastOfferAt>6000));
+      if(!approving && stale){ approve().catch(e=>diag('approve failed: '+e.message)); }
+      else { diag('request ignored (state '+(st||'none')+')'); } }
     else if(m.type==='offer' && role==='guest'){ if(!pc){ await onOffer(m.data); } else { await onRenegotiate(m.data); } }
     else if(m.type==='answer' && role==='host'){ try{ await pc.setRemoteDescription(m.data); remoteSet=true; diag('got answer — linking'); }catch(e){} }
     // 'ice' messages are no longer used (non-trickle) — ignored if an old client sends them.
@@ -1325,7 +1327,7 @@ const SHARE = (function(){
     diag('feeds set → video:'+(!!media.video)+' audio:'+(!!media.audio));
   }
   async function approve(){
-    approving=true; diag('viewer accepted — building connection');
+    approving=true; lastOfferAt=Date.now(); diag('viewer accepted — building connection');
     try{ if(pc){ try{pc.close();}catch(e){} } if(localStream){ /* keep preview stream */ }
     pc=new RTCPeerConnection(await iceConf()); wirePc();
     vTx=pc.addTransceiver('video',{direction:'sendrecv'});   // pre-negotiate the m-lines so feeds can start
