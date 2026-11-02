@@ -849,13 +849,17 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <div class="row"><button class="btn sm" id="share-copy">Copy link</button></div>
         <div id="share-reqs" style="margin-top:8px"></div>
         <p class="small muted" id="share-state"></p>
+        <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">🔧 Connection diagnostics</summary><pre class="diag-log" style="white-space:pre-wrap;word-break:break-word;font:11px var(--mono);color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;max-height:180px;overflow:auto"></pre></details>
       </div>
       <div id="view-box" hidden>
         <p class="big" id="view-title">Viewing a shared location</p>
         <div class="stat"><div class="k">Their position</div><div class="v" id="view-pos">connecting…</div></div>
         <div class="stat" style="margin-top:8px"><div class="k">Bearing &amp; distance to them</div><div class="v" id="view-brg">—</div></div>
         <video id="view-video" playsinline autoplay muted style="width:100%;border-radius:12px;margin-top:10px;display:none;background:#000"></video>
+        <div id="view-audio" class="row" style="display:none;align-items:center;gap:8px;margin-top:8px"><span style="font-size:18px">🔊</span><span class="small muted">Live audio from the sharer</span></div>
+        <p class="small" id="view-feedback" style="margin-top:8px;color:var(--accent2,#36c4ff)"></p>
         <p class="small muted" id="view-state"></p>
+        <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">🔧 Connection diagnostics</summary><pre class="diag-log" style="white-space:pre-wrap;word-break:break-word;font:11px var(--mono);color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;max-height:180px;overflow:auto"></pre></details>
       </div>
     </section>
 
@@ -1244,7 +1248,8 @@ drawCompass();
 const CONFIG = { relay: (()=>{ try{ return localStorage.getItem('pigeon-relay'); }catch(e){ return null; } })() || window.__PIGEON_RELAY || 'https://pigeon-relay.macholder67.workers.dev' };
 
 const SHARE = (function(){
-  let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false;
+  let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false, vTx=null, aTx=null;
+  const DIAG=[]; function diag(s){ const line=new Date().toLocaleTimeString()+' · '+s; DIAG.push(line); if(DIAG.length>60)DIAG.shift(); window.__pigeonDiag=DIAG; try{console.log('[pigeon]',s);}catch(e){} try{ document.querySelectorAll('.diag-log').forEach(el=>{ el.textContent=DIAG.slice(-14).join('\n'); el.scrollTop=el.scrollHeight; }); }catch(e){} cbs.onDiag&&cbs.onDiag(line); }
   const relay = ()=> (CONFIG.relay||'').replace(/\/+$/,'');
   const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   const unb64u = s => { s=s.replace(/-/g,'+').replace(/_/g,'/'); const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return u; };
@@ -1264,15 +1269,27 @@ const SHARE = (function(){
   function stopPoll(){ if(pollT)clearInterval(pollT); pollT=null; }
 
   async function handle(m){
-    if(m.type==='request' && role==='host'){ cbs.onRequest && cbs.onRequest(m.data||{}); if(!offered){ offered=true; approve(); } }   // sender already consented by sending the link; viewer just accepts
+    if(m.type==='request' && role==='host'){ cbs.onRequest && cbs.onRequest(m.data||{}); if(!offered){ offered=true; approve().catch(e=>diag('approve failed: '+e.message)); } }   // sender already consented by sending the link; viewer just accepts
     else if(m.type==='offer' && role==='guest'){ if(!pc){ await onOffer(m.data); } else { await onRenegotiate(m.data); } }
-    else if(m.type==='answer' && role==='host'){ try{ await pc.setRemoteDescription(m.data); remoteSet=true; flush(); }catch(e){} }
-    else if(m.type==='ice'){ if(pc && remoteSet){ try{ await pc.addIceCandidate(m.data); }catch(e){} } else pending.push(m.data); }   // queue ICE until the description is set
+    else if(m.type==='answer' && role==='host'){ try{ await pc.setRemoteDescription(m.data); remoteSet=true; diag('got answer — linking'); }catch(e){} }
+    // 'ice' messages are no longer used (non-trickle) — ignored if an old client sends them.
   }
-  function flush(){ pending.forEach(c=>pc.addIceCandidate(c).catch(()=>{})); pending=[]; }
-  function wirePc(){ pc.onicecandidate=e=>{ if(e.candidate) post('ice',e.candidate); };
-    pc.onconnectionstatechange=()=>cbs.onState&&cbs.onState(pc.connectionState);
-    pc.ontrack=e=>cbs.onStream&&cbs.onStream(e.streams[0]); }
+  // Non-trickle ICE: wait for candidate gathering to finish, then send ONE offer/answer
+  // with all candidates baked into the SDP. No per-candidate relay messages (saves KV writes),
+  // and it lets us stop polling the relay entirely once the P2P link is up.
+  function waitIce(){ return new Promise(res=>{ if(pc.iceGatheringState==='complete') return res();
+    const t=setTimeout(()=>{ try{pc.removeEventListener('icegatheringstatechange',chk);}catch(e){} res(); }, 3000);
+    function chk(){ if(pc.iceGatheringState==='complete'){ clearTimeout(t); pc.removeEventListener('icegatheringstatechange',chk); res(); } }
+    pc.addEventListener('icegatheringstatechange',chk); }); }
+  function wirePc(){ pc.onicecandidate=()=>{};              // candidates travel inside the SDP (non-trickle)
+    pc.onconnectionstatechange=()=>{ diag('connection: '+pc.connectionState);
+      if(pc.connectionState==='connected'){ stopPoll(); diag('P2P connected — relay polling stopped'); }
+      else if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){ if(!pollT){ startPoll(); diag('link dropped — polling resumed'); } }
+      cbs.onState&&cbs.onState(pc.connectionState); };
+    pc.oniceconnectionstatechange=()=>diag('ice: '+pc.iceConnectionState);
+    pc.ontrack=e=>{ const tr=e.track, kind=tr?tr.kind:'?'; diag('remote track: '+kind); cbs.onStream&&cbs.onStream(e.streams[0]);
+      if(tr){ const upd=()=>{ const on=!tr.muted&&tr.readyState==='live'; diag(kind+(on?' live':' idle')); cbs.onMedia&&cbs.onMedia(kind,on); };
+        tr.onunmute=upd; tr.onmute=upd; tr.onended=()=>cbs.onMedia&&cbs.onMedia(kind,false); upd(); } }; }
   function wireDc(){ dc.binaryType='arraybuffer';
     dc.onopen=()=>{ cbs.onState&&cbs.onState('linked');
       if(role==='host'){ if(media.pic) sendPic(media.pic); sendLoc(lastLoc); clearInterval(locT); locT=setInterval(()=>sendLoc(lastLoc),2000); } };   // live resend so it's never missed
@@ -1292,35 +1309,43 @@ const SHARE = (function(){
   }
   async function getStream(m){ return cbs.getMedia ? await cbs.getMedia({video:!!m.video,audio:!!m.audio})
                                                      : await navigator.mediaDevices.getUserMedia({video:!!m.video,audio:!!m.audio}); }
-  async function approve(){
-    pc=new RTCPeerConnection(await iceConf()); wirePc();
-    if(media.video||media.audio){ try{ localStream=await getStream(media); localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); }catch(e){ cbs.onState&&cbs.onState('camera/mic blocked — sharing location only'); } }
-    dc=pc.createDataChannel('loc'); wireDc();
-    const offer=await pc.createOffer(); await pc.setLocalDescription(offer); remoteSet=false; await post('offer',offer);
+  // Reconcile the outgoing video/audio tracks WITHOUT renegotiation (m-lines pre-exist from the first offer).
+  async function applyLocalMedia(){
+    if(!pc||!vTx||!aTx) return;
+    let stream=null;
+    if(media.video||media.audio){ try{ stream=await getStream(media); }catch(e){ diag('getUserMedia blocked'); cbs.onState&&cbs.onState('camera/mic blocked — sharing location only'); media.video=false; media.audio=false; } }
+    localStream=stream;
+    const vTrack=stream?stream.getVideoTracks()[0]||null:null;
+    const aTrack=stream?stream.getAudioTracks()[0]||null:null;
+    try{ await vTx.sender.replaceTrack(media.video?vTrack:null); }catch(e){ diag('video replaceTrack failed: '+e.message); }
+    try{ await aTx.sender.replaceTrack(media.audio?aTrack:null); }catch(e){ diag('audio replaceTrack failed: '+e.message); }
+    diag('feeds set → video:'+(!!media.video)+' audio:'+(!!media.audio));
   }
-  async function view(r,kB64,callbacks){ role='guest'; cbs=callbacks||{}; room=r; key=await importKey(unb64u(kB64)); cursor=0; remoteSet=false; pending=[]; startPoll(); await post('request',{name:'A Pigeon user'}); }
-  async function onOffer(offer){ pc=new RTCPeerConnection(await iceConf()); wirePc();
+  async function approve(){
+    diag('viewer accepted — building connection');
+    pc=new RTCPeerConnection(await iceConf()); wirePc();
+    vTx=pc.addTransceiver('video',{direction:'sendrecv'});   // pre-negotiate the m-lines so feeds can start
+    aTx=pc.addTransceiver('audio',{direction:'sendrecv'});   // later with zero renegotiation (robust on mobile)
+    await applyLocalMedia();
+    dc=pc.createDataChannel('loc'); wireDc();
+    const offer=await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce(); remoteSet=false; await post('offer',pc.localDescription); diag('sent offer (location + feed lanes)');
+  }
+  async function view(r,kB64,callbacks){ role='guest'; cbs=callbacks||{}; room=r; key=await importKey(unb64u(kB64)); cursor=0; remoteSet=false; pending=[]; startPoll(); diag('requesting connection from sharer'); await post('request',{name:'A Pigeon user'}); }
+  async function onOffer(offer){ diag('got offer — answering'); pc=new RTCPeerConnection(await iceConf()); wirePc();
     pc.ondatachannel=e=>{ dc=e.channel; wireDc(); };
-    await pc.setRemoteDescription(offer); remoteSet=true; flush();
-    const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await post('answer',answer); }
-  // Subsequent offers (sharer added/dropped a video or audio feed) — reuse the same connection.
-  async function onRenegotiate(offer){ try{ await pc.setRemoteDescription(offer); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await post('answer',answer); }catch(e){} }
+    await pc.setRemoteDescription(offer); remoteSet=true;
+    const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce(); await post('answer',pc.localDescription); diag('sent answer'); }
+  // Media on/off no longer renegotiates (tracks swap on pre-negotiated lanes), so no extra offers.
+  async function onRenegotiate(offer){ try{ await pc.setRemoteDescription(offer); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce(); await post('answer',pc.localDescription); }catch(e){} }
   // Sharer turns a live video/audio feed on or off at any time (location keeps flowing either way).
   async function setMedia(m2){
     media=Object.assign({},media,m2||{});
-    if(!pc){ return media; }                               // not linked yet — the preview reconciles; applied when the link is opened
-    pc.getSenders().filter(s=>s.track).forEach(s=>{ try{ pc.removeTrack(s); }catch(e){} });  // drop old senders (preview owns track lifecycle)
-    localStream=null;
-    if(media.video||media.audio){
-      try{ localStream=await getStream(media);
-        localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); }
-      catch(e){ cbs.onState&&cbs.onState('camera/mic blocked — still sharing location'); media.video=false; media.audio=false; }
-    }
-    try{ const offer=await pc.createOffer(); await pc.setLocalDescription(offer); remoteSet=false; await post('offer',offer); }catch(e){}
+    if(!pc){ return media; }                               // not linked yet — applied when the link is opened
+    await applyLocalMedia();                               // just swaps tracks on the existing m-lines — no renegotiation
     return media;
   }
   function updateLocation(loc){ lastLoc=loc; sendLoc(loc); }
-  function stop(){ stopPoll(); clearInterval(locT); try{dc&&dc.close();}catch(e){} try{pc&&pc.close();}catch(e){} if(localStream)localStream.getTracks().forEach(t=>t.stop()); pc=dc=null; role=null; }
+  function stop(){ stopPoll(); clearInterval(locT); try{dc&&dc.close();}catch(e){} try{pc&&pc.close();}catch(e){} if(localStream)localStream.getTracks().forEach(t=>t.stop()); pc=dc=null; role=null; vTx=aTx=null; diag('stopped'); }
   return { startShare, approve, view, updateLocation, setMedia, stop };
 })();
 window.SHARE = SHARE;
@@ -1428,8 +1453,12 @@ window.SHARE = SHARE;
       $('#view-title').textContent='Live location'; $('#view-pos').textContent='connecting…';
       try{ document.querySelector('.map-wrap').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
       SHARE.view(h[1],h[2],{
-        onState:(st)=>{ $('#view-state').textContent='Status: '+(st==='linked'?'connected':st); },
-        onStream:(stream)=>{ const v=$('#view-video'); v.srcObject=stream; v.style.display=''; v.muted=false; },
+        onState:(st)=>{ $('#view-state').textContent='Status: '+(st==='linked'?'connected':st==='connected'?'connected':st); },
+        onStream:(stream)=>{ const v=$('#view-video'); if(v.srcObject!==stream){ v.srcObject=stream; v.muted=false; v.play&&v.play().catch(()=>{}); } },
+        onMedia:(kind,on)=>{ if(kind==='video'){ const v=$('#view-video'); v.style.display=on?'':'none'; }
+          if(kind==='audio'){ const a=$('#view-audio'); if(a) a.style.display=on?'':'none'; }
+          const none=$('#view-video').style.display==='none' && (!$('#view-audio')||$('#view-audio').style.display==='none');
+          const fb=$('#view-feedback'); if(fb) fb.textContent = none?'Location only — the sharer hasn’t turned on a video or audio feed.':('Receiving'+($('#view-video').style.display!=='none'?' video':'')+($('#view-audio')&&$('#view-audio').style.display!=='none'?' audio':'')+' from the sharer.'); },
         onPic:(pic)=>{ senderPic=pic;
           $('#view-title').innerHTML=`<img src="${pic}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;vertical-align:middle;border:2px solid var(--accent)"> Live location`;
           if(viewMarker) viewMarker.setIcon(iconFor(pic)); },

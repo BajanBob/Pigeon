@@ -33,14 +33,20 @@ export default {
         for (const k of list.keys){ const raw = await env.SIG.get(k.name); if(raw){ try{ stations.push(JSON.parse(raw)); }catch(e){} } } return json({ stations }); } }
     const m = path.match(/^\/room\/([^/]+)$/);
     if (m) { const room = m[1]; if (!roomOk(room)) return json({ error:"bad room" }, 400);
+      // Single mailbox key per (room,role) — GET and POST use only KV get/put, never list.
+      // (The old list-per-poll design exhausted the KV free tier's 1,000 list ops/day in minutes.)
       if (request.method === "POST") { let b; try{ b = await request.json(); }catch(e){ return json({error:"bad json"},400); }
         const from = b.from==="guest"?"guest":"host"; const to = from==="host"?"guest":"host";
-        const seq = Date.now()*1000 + Math.floor(Math.random()*1000); const msg = { seq, from, type:String(b.type||"msg"), data:b.data??null };
-        await env.SIG.put("m:"+room+":"+to+":"+seq, JSON.stringify(msg), { expirationTtl: TTL }); return json({ ok:true, seq }); }
+        const kkey = "mb:"+room+":"+to;
+        let box; try{ box = JSON.parse(await env.SIG.get(kkey) || "[]"); }catch(e){ box = []; }
+        const seq = Date.now()*1000 + Math.floor(Math.random()*1000);
+        box.push({ seq, from, type:String(b.type||"msg"), data:b.data??null });
+        while (box.length > 40) box.shift();                 // cap: offer/answer + a little slack
+        await env.SIG.put(kkey, JSON.stringify(box), { expirationTtl: TTL }); return json({ ok:true, seq }); }
       if (request.method === "GET") { const role = url.searchParams.get("role")==="guest"?"guest":"host"; const since = Number(url.searchParams.get("since")||0);
-        const list = await env.SIG.list({ prefix:"m:"+room+":"+role+":" }); const msgs=[];
-        for (const k of list.keys){ const seq = Number(k.name.split(":").pop()); if(seq<=since) continue; const raw = await env.SIG.get(k.name); if(raw){ try{ msgs.push(JSON.parse(raw)); }catch(e){} } }
-        msgs.sort((a,b)=>a.seq-b.seq); return json({ msgs, cursor: msgs.length?msgs[msgs.length-1].seq:since }); } }
+        let box; try{ box = JSON.parse(await env.SIG.get("mb:"+room+":"+role) || "[]"); }catch(e){ box = []; }
+        const msgs = box.filter(x=>x.seq>since).sort((a,b)=>a.seq-b.seq);
+        return json({ msgs, cursor: msgs.length?msgs[msgs.length-1].seq:since }); } }
     if (request.method === "GET") {           // serve the Pigeon web app (share links open here)
       try { const r = await fetch(APP_URL, { cf: { cacheTtl: 300 } }); const html = await r.text();
         return new Response(html, { headers: { "content-type":"text/html; charset=utf-8", ...cors } }); }
