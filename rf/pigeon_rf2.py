@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-PigeonFSK-2  —  low-SNR amateur position waveform (AI-assisted design)
-======================================================================
-A second-generation Pigeon RF mode built to pull a position beacon out of the
-noise far below where PigeonFSK-1 (Hamming) gives up. Clear text (ham-legal).
+HOMER  —  low-SNR amateur position mode  (AVIAN codec, AI-assisted design)
+==========================================================================
+HOMER (homing-pigeon weak-signal position beacon), running the AVIAN codec
+(Adaptive Viterbi / AI Narrowband). Formerly "PigeonFSK-2"; the name is kept in
+the module for import stability. A second-generation Pigeon RF mode built to pull
+a position beacon out of the noise far below where PigeonFSK-1 (Hamming) gives up.
+Clear text (ham-legal). "AI-assisted" is the accurate label — the design was done
+by the AI here; the specific serving model version is not asserted.
 
 Signal-processing stack
   * narrow 16-FSK, ~3.9 baud, tones on exact FFT bins (~1000-1059 Hz, ~59 Hz wide)

@@ -78,9 +78,14 @@ Decode a recording instead of live audio:
 python rf_station.py rx --wav recording.wav
 ```
 
-## PigeonFSK-2 — the low-SNR / AI-hybrid mode
+## HOMER — the low-SNR mode (AVIAN codec)
 
-`pigeon_rf2.py` is a second-generation waveform for pulling a beacon out of the
+**HOMER** (homing-pigeon weak-signal position beacon) runs the **AVIAN codec**
+(Adaptive Viterbi / AI Narrowband). It was formerly called PigeonFSK-2; the module
+file keeps the old name for import stability. "AI-assisted design" is the accurate
+credit — the specific serving model version is not claimed.
+
+`pigeon_rf2.py` is this second-generation waveform for pulling a beacon out of the
 noise far below where the Hamming version gives up:
 
 - narrow 16-FSK at ~3.9 baud (~59 Hz wide)
