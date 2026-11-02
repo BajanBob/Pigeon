@@ -1201,7 +1201,7 @@ drawCompass();
    Pigeon live location sharing — fresh WebRTC + AES-256-GCM (no Shelly code)
    Relay only carries the WebRTC setup; location/video/audio go phone-to-phone.
    =========================================================================== */
-const CONFIG = { relay: (()=>{ try{ return localStorage.getItem('pigeon-relay'); }catch(e){ return null; } })() || window.__PIGEON_RELAY || 'https://pigeon-relay.YOURNAME.workers.dev' };
+const CONFIG = { relay: (()=>{ try{ return localStorage.getItem('pigeon-relay'); }catch(e){ return null; } })() || window.__PIGEON_RELAY || 'https://pigeon-relay.macholder67.workers.dev' };
 
 const SHARE = (function(){
   let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false;
@@ -1242,7 +1242,7 @@ const SHARE = (function(){
     const rawKey=crypto.getRandomValues(new Uint8Array(32)); key=await importKey(rawKey);
     cursor=0; remoteSet=false; pending=[]; startPoll();
     const relayTag=b64u(new TextEncoder().encode(relay()));    // put the relay in the link so the viewer needs no setup
-    return { room, link: location.origin+location.pathname+'#view='+room+'.'+b64u(rawKey)+'~'+relayTag };
+    return { room, link: relay()+'/#view='+room+'.'+b64u(rawKey)+'~'+relayTag };   // link opens the viewer served by the relay (a real, shareable URL)
   }
   async function approve(){
     pc=new RTCPeerConnection(await iceConf()); wirePc();
