@@ -758,40 +758,28 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </section>
 
     <section class="card">
-      <h2>Destination &amp; bearing</h2>
+      <h2>Destination &amp; location</h2>
+      <label class="k" style="display:block;margin-bottom:6px">My location</label>
+      <div class="layers">
+        <button id="loc-gps" class="on" title="Use the phone's GPS/GNSS fix (most accurate)">📡 GPS</button>
+        <button id="loc-ip" title="Locate this device by its internet (IP) address — approximate">🌐 IP address</button>
+      </div>
+      <label class="k" style="display:block;margin:10px 0 6px">Destination — country &amp; zip / postal code</label>
       <div class="row">
-        <select class="in" id="dest-mode" style="flex:0 0 auto;max-width:46%">
-          <option value="place">Place name</option>
-          <option value="postcode">Postal code</option>
-          <option value="grid">Grid square</option>
-          <option value="coords">Coordinates</option>
-        </select>
-        <input class="in" id="dest" placeholder="e.g. Bridgetown, Barbados" autocomplete="off" spellcheck="false">
+        <select class="in" id="dest-country" style="flex:0 0 auto;max-width:54%"></select>
+        <input class="in" id="dest-zip" placeholder="Zip / postal code" autocomplete="off" spellcheck="false">
       </div>
       <div class="row">
         <button class="btn go sm" id="set-dest">Set destination</button>
         <button class="btn sm" id="pick">Tap map to pick</button>
         <button class="btn sm" id="clear-dest">Clear</button>
       </div>
-      <div class="compass-wrap" style="margin-top:14px">
-        <svg class="compass" viewBox="0 0 200 200" id="compass" aria-hidden="true">
-          <circle cx="100" cy="100" r="94" fill="none" stroke="var(--line)" stroke-width="2"/>
-          <!-- fixed "top of phone" marker -->
-          <polygon points="100,6 94,18 106,18" fill="var(--muted)"/>
-          <text x="100" y="32" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="var(--mono)">TOP</text>
-          <!-- steering arrow: points to the destination relative to the phone's top -->
-          <g id="steer"><polygon id="arrow" points="100,26 84,124 100,106 116,124" fill="var(--accent)"/></g>
-          <circle cx="100" cy="100" r="6" fill="var(--fg)"/>
-        </svg>
-        <div class="cinfo">
-          <div class="stat"><div class="k">Heading — azimuth the top of phone points</div><div class="v big" id="hdg">—</div></div>
-          <div class="stat"><div class="k">Bearing / azimuth to destination</div><div class="v big" id="brg">—</div></div>
-          <div class="stat"><div class="k">Steer</div><div class="v" id="steer-txt">set a destination</div></div>
-          <div class="stat"><div class="k">Distance</div><div class="v" id="distv">—</div></div>
-          <div class="stat"><div class="k">ETA at current speed</div><div class="v" id="eta">—</div></div>
-        </div>
+      <div class="cinfo" style="margin-top:14px">
+        <div class="stat"><div class="k">Heading — azimuth the top of phone points</div><div class="v big" id="hdg">—</div></div>
+        <div class="stat" style="margin-top:8px"><div class="k">Distance to destination</div><div class="v big" id="distv">—</div></div>
+        <div class="stat" style="margin-top:8px"><div class="k">ETA at current speed</div><div class="v" id="eta">—</div></div>
       </div>
-      <p class="small muted" style="margin:8px 0 0">Hold the phone flat. The blue arrow points the way to your destination; <b>Heading</b> is the digital azimuth the top of the phone is pointing, and <b>Bearing</b> is the azimuth to the destination. Tap the screen once to enable the compass.</p>
+      <p class="small muted" style="margin:10px 0 0">Choose your country, enter the destination's zip / postal code, and tap <b>Set destination</b>. Your own position comes from GPS, or tap <b>IP address</b> to locate this device by its network. Tap the screen once to enable the heading sensor.</p>
     </section>
 
     <section class="card">
@@ -1075,32 +1063,53 @@ if(rfBtn) rfBtn.onclick=()=>{
 map.on('click',e=>{ if(pickMode){ setDest(e.latlng.lat,e.latlng.lng); pickMode=false; $('#pick').textContent='Tap map to pick'; }});
 
 // ---------- destination (grid square · postal code · place name · coordinates) ----------
-function setDest(lat,lon,label){ dest={lat,lon};
+// ---- destination: country dropdown + zip/postal code (geocoded) ----
+const COUNTRIES=[["BB","Barbados"],["US","United States"],["CA","Canada"],["GB","United Kingdom"],["JM","Jamaica"],["TT","Trinidad & Tobago"],["GY","Guyana"],["SR","Suriname"],["BS","Bahamas"],["AG","Antigua & Barbuda"],["DM","Dominica"],["GD","Grenada"],["KN","St Kitts & Nevis"],["LC","St Lucia"],["VC","St Vincent & Grenadines"],["AU","Australia"],["NZ","New Zealand"],["IE","Ireland"],["FR","France"],["DE","Germany"],["ES","Spain"],["PT","Portugal"],["IT","Italy"],["NL","Netherlands"],["BE","Belgium"],["CH","Switzerland"],["AT","Austria"],["SE","Sweden"],["NO","Norway"],["DK","Denmark"],["FI","Finland"],["PL","Poland"],["CZ","Czechia"],["GR","Greece"],["RO","Romania"],["HU","Hungary"],["IN","India"],["PK","Pakistan"],["BD","Bangladesh"],["LK","Sri Lanka"],["CN","China"],["JP","Japan"],["KR","South Korea"],["SG","Singapore"],["MY","Malaysia"],["TH","Thailand"],["PH","Philippines"],["ID","Indonesia"],["VN","Vietnam"],["AE","United Arab Emirates"],["SA","Saudi Arabia"],["QA","Qatar"],["IL","Israel"],["TR","Turkey"],["ZA","South Africa"],["NG","Nigeria"],["KE","Kenya"],["GH","Ghana"],["EG","Egypt"],["MA","Morocco"],["MX","Mexico"],["BR","Brazil"],["AR","Argentina"],["CL","Chile"],["CO","Colombia"],["PE","Peru"],["VE","Venezuela"],["EC","Ecuador"],["BO","Bolivia"],["PY","Paraguay"],["UY","Uruguay"],["PA","Panama"],["CR","Costa Rica"],["GT","Guatemala"],["DO","Dominican Republic"],["PR","Puerto Rico"],["CU","Cuba"],["RU","Russia"],["UA","Ukraine"]];
+(function(){ const sel=$('#dest-country'); if(!sel) return; COUNTRIES.forEach(([c,n])=>{ const o=document.createElement('option'); o.value=c; o.textContent=n; sel.appendChild(o); }); sel.value='BB'; })();
+function setDest(lat,lon){ dest={lat,lon};
   if(destMarker)destMarker.setLatLng([lat,lon]); else destMarker=L.marker([lat,lon]).addTo(map).bindTooltip('Destination');
-  $('#dest').value = label || (lat.toFixed(5)+','+lon.toFixed(5)); draw(); updateNav(); }
-// Geocode a place name or postal code via OpenStreetMap Nominatim.
-async function geocode(q, postal){
-  const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&'+(postal?('postalcode='+encodeURIComponent(q)):('q='+encodeURIComponent(q)));
-  const r=await fetch(url,{headers:{'Accept':'application/json'}}); const j=await r.json();
-  if(j&&j[0]) return [parseFloat(j[0].lat),parseFloat(j[0].lon),(j[0].display_name||q).split(',').slice(0,2).join(',')];
+  draw(); updateNav(); }
+async function geocodeZip(zip, cc){
+  const base='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes='+cc.toLowerCase();
+  let r=await fetch(base+'&postalcode='+encodeURIComponent(zip),{headers:{'Accept':'application/json'}}); let j=await r.json();
+  if(!(j&&j[0])){ r=await fetch(base+'&q='+encodeURIComponent(zip),{headers:{'Accept':'application/json'}}); j=await r.json(); }
+  if(j&&j[0]) return [parseFloat(j[0].lat),parseFloat(j[0].lon)];
   return null;
 }
-const DEST_PH={place:'e.g. Bridgetown, Barbados',postcode:'e.g. BB11000 or SW1A 1AA',grid:'e.g. GK03fd',coords:'13.10,-59.60'};
-$('#dest-mode').onchange=()=>{ $('#dest').placeholder=DEST_PH[$('#dest-mode').value]||''; };
 $('#set-dest').onclick=async()=>{
-  const v=$('#dest').value.trim(); if(!v) return;
-  const mode=$('#dest-mode').value, btn=$('#set-dest');
-  if(mode==='grid'){ const p=gridToLatLon(v); if(!p) return alert('Enter a Maidenhead grid square like GK03fd.'); setDest(p[0],p[1],v.toUpperCase()); map.setView([p[0],p[1]],Math.max(map.getZoom(),12)); return; }
-  if(mode==='coords'){ const m=v.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/); if(!m) return alert('Enter coordinates as  lat,lon  (e.g. 13.10,-59.60).'); setDest(+m[1],+m[2]); map.setView([+m[1],+m[2]],Math.max(map.getZoom(),12)); return; }
-  // place name or postal code -> geocode
+  const zip=$('#dest-zip').value.trim(), cc=$('#dest-country').value, btn=$('#set-dest');
+  if(!zip) return alert('Enter the destination zip / postal code.');
   btn.textContent='Searching…'; btn.disabled=true;
-  let p=null; try{ p=await geocode(v, mode==='postcode'); }catch(e){}
+  let p=null; try{ p=await geocodeZip(zip, cc); }catch(e){}
   btn.textContent='Set destination'; btn.disabled=false;
-  if(!p) return alert('Couldn’t find that '+(mode==='postcode'?'postal code':'place')+'. Try adding a city or country.');
-  setDest(p[0],p[1], p[2]||v); map.setView([p[0],p[1]],Math.max(map.getZoom(),13));
+  if(!p) return alert('Couldn’t find that zip / postal code in the selected country — check the code and the country.');
+  setDest(p[0],p[1]); map.setView([p[0],p[1]],Math.max(map.getZoom(),12));
 };
 $('#pick').onclick=()=>{ pickMode=!pickMode; $('#pick').textContent=pickMode?'Tap the map…':'Tap map to pick'; };
-$('#clear-dest').onclick=()=>{ dest=null; if(destMarker){map.removeLayer(destMarker);destMarker=null;} if(lineLayer){map.removeLayer(lineLayer);lineLayer=null;} $('#dest').value=''; ['brg','distv','eta'].forEach(id=>$('#'+id).textContent='—'); $('#steer-txt').textContent='set a destination'; drawCompass(); };
+$('#clear-dest').onclick=()=>{ dest=null; if(destMarker){map.removeLayer(destMarker);destMarker=null;} if(lineLayer){map.removeLayer(lineLayer);lineLayer=null;} ['distv','eta'].forEach(id=>$('#'+id).textContent='—'); };
+
+// ---- device location: GPS (default) or IP address ----
+let gpsWatch=null;
+function setMe(lat,lon,src){ me={lat,lon};
+  $('#gps-warn').hidden=true; $('#lat').textContent=lat.toFixed(5)+'°'; $('#lon').textContent=lon.toFixed(5)+'°'; $('#grid').textContent=toGrid(lat,lon);
+  $('#fix-src').textContent=src+' · '+new Date().toLocaleTimeString();
+  if(meMarker)meMarker.setLatLng([lat,lon]); else meMarker=L.circleMarker([lat,lon],{radius:8,color:'#fff',weight:2,fillColor:'#36c4ff',fillOpacity:1}).addTo(map).bindTooltip('You');
+  map.setView([lat,lon],Math.max(map.getZoom(),13)); draw(); updateNav(); loadLandmarksThrottled();
+  if(window.SHARE) window.SHARE.updateLocation({lat,lon,grid:toGrid(lat,lon),ts:Date.now()});
+}
+function startGps(){ if(!navigator.geolocation){ $('#gps-warn').hidden=false; $('#gps-warn').textContent='This device has no location support.'; return; }
+  $('#gps-warn').hidden=false; $('#gps-warn').textContent='Getting GPS fix…'; if(gpsWatch==null) gpsWatch=navigator.geolocation.watchPosition(onPos,onPosErr,{enableHighAccuracy:true,maximumAge:2000,timeout:20000}); }
+async function useIp(){
+  const b=(CONFIG.relay||'').replace(/\/+$/,''); if(!b||b.includes('YOURNAME')){ alert('IP location uses the relay — set the relay URL in the Share section first.'); return; }
+  $('#fix-src').textContent='Locating by IP…';
+  try{ const j=await (await fetch(b+'/where')).json();
+    if(j.lat!=null&&j.lon!=null){ if(gpsWatch!=null){ navigator.geolocation.clearWatch(gpsWatch); gpsWatch=null; }
+      setMe(j.lat,j.lon,'IP location'+(j.city?(' · '+j.city):'')+' (approx)'); $('#spd').textContent='—'; $('#acc').innerHTML='city-level'; $('#alt').innerHTML='<small>n/a</small>'; }
+    else alert('IP location unavailable from the relay.');
+  }catch(e){ alert('IP location failed — check the relay URL.'); $('#fix-src').textContent=''; }
+}
+$('#loc-gps').onclick=()=>{ $('#loc-gps').classList.add('on'); $('#loc-ip').classList.remove('on'); startGps(); };
+$('#loc-ip').onclick=()=>{ $('#loc-ip').classList.add('on'); $('#loc-gps').classList.remove('on'); useIp(); };
 
 // ---------- position ----------
 function fmtSpeed(mps){ if(mps==null) return '—'; const k=mps*3.6; return k.toFixed(k<10?1:0)+' <small>km/h</small> · '+(mps*1.94384).toFixed(0)+' <small>kn</small>'; }
@@ -1117,9 +1126,8 @@ function onPos(p){ const c=p.coords; me={lat:c.latitude,lon:c.longitude};
   draw(); updateNav(); loadLandmarksThrottled();
   if (window.SHARE) window.SHARE.updateLocation({lat:me.lat,lon:me.lon,grid:toGrid(me.lat,me.lon),alt:c.altitude,spd:c.speed,acc:c.accuracy,ts:Date.now()});
 }
-function onPosErr(e){ $('#gps-warn').hidden=false; $('#gps-warn').textContent='Location unavailable: '+e.message+'. Allow location and try outdoors.'; }
-if(navigator.geolocation){ $('#gps-warn').hidden=false; navigator.geolocation.watchPosition(onPos,onPosErr,{enableHighAccuracy:true,maximumAge:2000,timeout:20000}); }
-else $('#gps-warn').textContent='This device has no location support.';
+function onPosErr(e){ $('#gps-warn').hidden=false; $('#gps-warn').textContent='Location unavailable: '+e.message+'. Allow location and try outdoors, or use IP address.'; }
+startGps();   // default to GPS; user can switch to IP
 
 function draw(){ if(me&&dest){ const pts=[[me.lat,me.lon],[dest.lat,dest.lon]];
   if(lineLayer)lineLayer.setLatLngs(pts); else lineLayer=L.polyline(pts,{color:'#36c4ff',weight:3,dashArray:'6 6',opacity:.8}).addTo(map); } }
@@ -1143,18 +1151,9 @@ function pushHeading(h){                 // circular low-pass to stop jitter
   headingSmooth=(Math.atan2(hs_sin,hs_cos)*180/Math.PI+360)%360; heading=headingSmooth;
 }
 function scheduleDraw(){ if(rafPending)return; rafPending=true; requestAnimationFrame(()=>{rafPending=false; drawCompass();}); }
-function drawCompass(){
+function drawCompass(){   // digital heading only — azimuth the top of the phone points
   const hdg=headingSmooth;
   $('#hdg').textContent = hdg==null ? 'tap to enable' : Math.round(hdg)+'° '+compassName(hdg);
-  if(me&&dest){
-    const b=bearing(me.lat,me.lon,dest.lat,dest.lon);
-    $('#brg').textContent=Math.round(b)+'° '+compassName(b);
-    const rel=(hdg==null ? b : (b-hdg+360)%360);
-    const ar=$('#arrow'); if(ar){ ar.style.display=''; ar.setAttribute('transform',`rotate(${rel.toFixed(1)} 100 100)`); }
-    if(hdg==null){ $('#steer-txt').textContent='Enable compass to steer'; }
-    else { const diff=((b-hdg+540)%360)-180, ad=Math.abs(diff);
-      $('#steer-txt').textContent = ad<8 ? 'On course — straight ahead' : (diff>0?('Turn right '+Math.round(ad)+'°'):('Turn left '+Math.round(ad)+'°')); }
-  } else { const ar=$('#arrow'); if(ar) ar.style.display='none'; }
 }
 function screenAngle(){ try{ return (screen.orientation&&screen.orientation.angle)||window.orientation||0; }catch(e){ return 0; } }
 function onOrient(e){
