@@ -1,0 +1,32 @@
+{
+  "name": "einstein",
+  "version": "1.0.0",
+  "description": "Einstein — weak-signal station log & analysis (WSJT-X import, grid DX, weather-tagged logging, ADIF/CSV).",
+  "author": "BajanBob",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "scripts": {
+    "electron": "electron .",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:linux": "electron-builder --linux --publish never"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "6.2.1",
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "dependencies": {
+    "@capacitor/core": "6.2.1",
+    "@capacitor/android": "6.2.1",
+    "@capacitor/ios": "6.2.1"
+  },
+  "build": {
+    "appId": "net.einstein.log",
+    "productName": "Einstein",
+    "files": [ "electron/**/*", "www/**/*" ],
+    "directories": { "output": "dist", "buildResources": "resources" },
+    "win": { "target": [ { "target": "nsis", "arch": ["x64"] } ], "icon": "resources/icon.png" },
+    "linux": { "target": [ "AppImage", "deb" ], "icon": "resources/icon.png", "category": "HamRadio", "maintainer": "BajanBob" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false }
+  }
+}

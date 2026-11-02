@@ -1,0 +1,98 @@
+name: Build Einstein (Android · Windows · Linux)
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'einstein/**', '.github/workflows/einstein.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: einstein
+
+jobs:
+  android:
+    name: Einstein Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: Install deps
+        run: npm install
+      - name: Add Android platform
+        run: npx cap add android
+      - name: Generate icons
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#0a0f14' --iconBackgroundColorDark '#0a0f14' || echo skip
+      - name: Sync
+        run: npx cap sync android
+      - name: Build APK
+        run: cd android && chmod +x ./gradlew && ./gradlew assembleDebug
+      - name: Stage
+        run: mkdir -p out && cp android/app/build/outputs/apk/debug/app-debug.apk out/Einstein.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: Einstein-Android, path: einstein/out/Einstein.apk }
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: einstein-v1.0.0
+          name: Einstein v1.0.0
+          files: einstein/out/Einstein.apk
+
+  windows:
+    name: Einstein Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install deps
+        run: npm install
+      - name: Build installer
+        run: npx electron-builder --win --publish never
+      - name: Stage
+        shell: bash
+        run: mkdir -p out && cp dist/*.exe out/ || true
+      - uses: actions/upload-artifact@v4
+        with: { name: Einstein-Windows, path: einstein/out/*.exe }
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: einstein-v1.0.0
+          name: Einstein v1.0.0
+          files: einstein/out/*.exe
+
+  linux:
+    name: Einstein Linux (AppImage + deb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install deps
+        run: npm install
+      - name: Build packages
+        run: npx electron-builder --linux --publish never
+      - name: Stage
+        run: |
+          mkdir -p out
+          cp dist/*.AppImage out/ 2>/dev/null || true
+          cp dist/*.deb out/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with: { name: Einstein-Linux, path: einstein/out/* }
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: einstein-v1.0.0
+          name: Einstein v1.0.0
+          files: |
+            einstein/out/*.AppImage
+            einstein/out/*.deb
