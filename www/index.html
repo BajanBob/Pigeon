@@ -835,6 +835,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <button class="btn sm" id="share-stop" hidden>⏹ Stop sharing</button>
       </div>
       <p class="small muted" id="feed-hint" style="margin-top:2px">Tap <b>Video feed</b> or <b>Audio feed</b> to include them — before or during a share. You can turn each off or stop sharing entirely at any time.</p>
+      <div id="self-feed" hidden style="margin-top:8px">
+        <video id="self-video" playsinline autoplay muted style="width:100%;max-height:200px;border-radius:12px;background:#000;display:none"></video>
+        <div id="self-mic" class="row" style="display:none;align-items:center;gap:8px;margin-top:6px">
+          <span style="font-size:18px">🎙️</span>
+          <div style="flex:1;height:8px;background:var(--line);border-radius:999px;overflow:hidden"><div id="mic-bar" style="height:100%;width:0;background:var(--accent);transition:width .08s"></div></div>
+          <span class="small muted">mic live</span>
+        </div>
+        <p class="small muted" id="self-feed-note" style="margin:4px 0 0">This preview is only on your phone — it confirms your feed is working. The other person sees it once connected.</p>
+      </div>
       <div id="share-box" hidden>
         <div class="stat" style="margin-top:10px"><div class="k">Your private link — send it to one person</div><div class="v" id="share-link" style="font-size:12px;overflow-wrap:anywhere"></div></div>
         <div class="row"><button class="btn sm" id="share-copy">Copy link</button></div>
@@ -1281,9 +1290,11 @@ const SHARE = (function(){
     const relayTag=b64u(new TextEncoder().encode(relay()));    // put the relay in the link so the viewer needs no setup
     return { room, link: relay()+'/#view='+room+'.'+b64u(rawKey)+'~'+relayTag };   // link opens the viewer served by the relay (a real, shareable URL)
   }
+  async function getStream(m){ return cbs.getMedia ? await cbs.getMedia({video:!!m.video,audio:!!m.audio})
+                                                     : await navigator.mediaDevices.getUserMedia({video:!!m.video,audio:!!m.audio}); }
   async function approve(){
     pc=new RTCPeerConnection(await iceConf()); wirePc();
-    if(media.video||media.audio){ try{ localStream=await navigator.mediaDevices.getUserMedia({video:!!media.video,audio:!!media.audio}); localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); }catch(e){ cbs.onState&&cbs.onState('camera/mic blocked — sharing location only'); } }
+    if(media.video||media.audio){ try{ localStream=await getStream(media); localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); }catch(e){ cbs.onState&&cbs.onState('camera/mic blocked — sharing location only'); } }
     dc=pc.createDataChannel('loc'); wireDc();
     const offer=await pc.createOffer(); await pc.setLocalDescription(offer); remoteSet=false; await post('offer',offer);
   }
@@ -1297,12 +1308,11 @@ const SHARE = (function(){
   // Sharer turns a live video/audio feed on or off at any time (location keeps flowing either way).
   async function setMedia(m2){
     media=Object.assign({},media,m2||{});
-    if(!pc){ return media; }                               // not linked yet — applied when the link is opened
-    if(localStream){ localStream.getTracks().forEach(t=>t.stop()); }
-    pc.getSenders().filter(s=>s.track).forEach(s=>{ try{ pc.removeTrack(s); }catch(e){} });
+    if(!pc){ return media; }                               // not linked yet — the preview reconciles; applied when the link is opened
+    pc.getSenders().filter(s=>s.track).forEach(s=>{ try{ pc.removeTrack(s); }catch(e){} });  // drop old senders (preview owns track lifecycle)
     localStream=null;
     if(media.video||media.audio){
-      try{ localStream=await navigator.mediaDevices.getUserMedia({video:!!media.video,audio:!!media.audio});
+      try{ localStream=await getStream(media);
         localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); }
       catch(e){ cbs.onState&&cbs.onState('camera/mic blocked — still sharing location'); media.video=false; media.audio=false; }
     }
@@ -1321,12 +1331,48 @@ window.SHARE = SHARE;
   let viewMarker=null, myPhoto=null, live=false, vOn=false, aOn=false;
   function reflect(){ const vb=$('#t-video'), ab=$('#t-audio'); if(!vb||!ab)return; vb.classList.toggle('on',vOn); ab.classList.toggle('on',aOn); vb.setAttribute('aria-pressed',vOn); ab.setAttribute('aria-pressed',aOn); }
   function feedLabel(){ return 'Sharing your location'+(vOn?' + live video':'')+(aOn?' + live audio':'')+'.'; }
+
+  /* ---- self-preview: the sharer sees their own camera/mic so a feed clearly works ---- */
+  let preview=null, micCtx=null, micRAF=null;
+  async function reconcilePreview(){
+    const wantV=vOn, wantA=aOn;
+    if(!wantV && !wantA){ dropPreview(); return null; }
+    if(!preview) preview=new MediaStream();
+    // video
+    const hasV=preview.getVideoTracks().length>0;
+    if(wantV && !hasV){ const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); s.getVideoTracks().forEach(t=>preview.addTrack(t)); }
+    if(!wantV && hasV){ preview.getVideoTracks().forEach(t=>{ t.stop(); preview.removeTrack(t); }); }
+    // audio
+    const hasA=preview.getAudioTracks().length>0;
+    if(wantA && !hasA){ const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getAudioTracks().forEach(t=>preview.addTrack(t)); }
+    if(!wantA && hasA){ preview.getAudioTracks().forEach(t=>{ t.stop(); preview.removeTrack(t); }); stopMeter(); }
+    renderPreview();
+    return preview;
+  }
+  function renderPreview(){
+    const box=$('#self-feed'), v=$('#self-video'), m=$('#self-mic');
+    if(!box) return;
+    const hasV=preview&&preview.getVideoTracks().length>0, hasA=preview&&preview.getAudioTracks().length>0;
+    box.hidden=!(hasV||hasA);
+    if(hasV){ v.style.display=''; if(v.srcObject!==preview) v.srcObject=preview; } else { v.style.display='none'; v.srcObject=null; }
+    if(hasA){ m.style.display='flex'; startMeter(); } else { m.style.display='none'; }
+  }
+  function startMeter(){
+    if(micCtx||!preview) return;
+    try{ micCtx=new (window.AudioContext||window.webkitAudioContext)(); const src=micCtx.createMediaStreamSource(preview);
+      const an=micCtx.createAnalyser(); an.fftSize=256; src.connect(an); const data=new Uint8Array(an.frequencyBinCount);
+      const bar=$('#mic-bar'); const loop=()=>{ an.getByteFrequencyData(data); let s=0; for(const x of data)s+=x; const lvl=Math.min(100,(s/data.length)/128*100*2); if(bar)bar.style.width=lvl+'%'; micRAF=requestAnimationFrame(loop); }; loop();
+    }catch(e){}
+  }
+  function stopMeter(){ if(micRAF)cancelAnimationFrame(micRAF); micRAF=null; if(micCtx){ try{micCtx.close();}catch(e){} micCtx=null; } const bar=$('#mic-bar'); if(bar)bar.style.width='0'; }
+  function dropPreview(){ stopMeter(); if(preview){ preview.getTracks().forEach(t=>t.stop()); preview=null; } const box=$('#self-feed'); if(box)box.hidden=true; const v=$('#self-video'); if(v){v.style.display='none';v.srcObject=null;} }
   function compressImage(file){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ const s=Math.min(1,160/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.7)); }; img.onerror=()=>res(null); img.src=URL.createObjectURL(file); }); }
   const pin=$('#share-photo'); if(pin) pin.onchange=async()=>{ const f=pin.files[0]; if(!f)return; myPhoto=await compressImage(f); $('#photo-state').textContent='Photo added ✓'; };
   function iconFor(pic){ return (pic&&typeof L!=='undefined')?L.divIcon({className:'',html:`<img src="${pic}" style="width:46px;height:46px;border-radius:50%;border:3px solid #36c4ff;object-fit:cover">`,iconSize:[46,46],iconAnchor:[23,23]}):undefined; }
   async function begin(opts){
     try{
       const s=await SHARE.startShare(Object.assign({pic:myPhoto},opts),{
+        getMedia:(m)=>reconcilePreview(),                    // share the SAME stream the preview uses (one camera open)
         onRequest:(info)=>{ $('#share-reqs').innerHTML='<p class="small muted">'+esc(info.name||'Someone')+' opened your link — connecting…</p>'; },
         onState:(st)=>{ $('#share-state').textContent = st==='linked'?'Connected — they can see your live location.':st==='connected'?'Linked.':'Status: '+st; }
       });
@@ -1356,15 +1402,17 @@ window.SHARE = SHARE;
       const t={urls, username:us.value.trim(), credential:cr.value.trim()}; try{localStorage.setItem('pigeon-turn',JSON.stringify(t));}catch(e){} st.textContent='TURN saved ✓'; };
   })();
   async function toggleFeed(which){
-    if(which==='v'){ vOn=!vOn; if(vOn && window.__pigeonAskCamera) window.__pigeonAskCamera(); }
-    else { aOn=!aOn; }
+    if(which==='v'){ vOn=!vOn; } else { aOn=!aOn; }
     reflect();
+    try{ await reconcilePreview(); }                        // show the sharer their own feed right away
+    catch(e){ if(which==='v')vOn=false; else aOn=false; reflect(); alert('Camera/microphone blocked. Allow the permission in your phone settings, then try again.'); return; }
     if(live){ await SHARE.setMedia({video:vOn,audio:aOn}); $('#share-state').textContent=feedLabel(); }
+    else { $('#share-state') && ($('#share-state').textContent=(vOn||aOn)?('Ready — '+feedLabel()+' Tap “Share location” to send your link.'):''); }
   }
   $('#t-video').onclick=()=>toggleFeed('v');
   $('#t-audio').onclick=()=>toggleFeed('a');
   $('#share-loc').onclick=()=>begin({video:vOn,audio:aOn});
-  $('#share-stop').onclick=()=>{ SHARE.stop(); live=false; vOn=false; aOn=false; reflect();
+  $('#share-stop').onclick=()=>{ SHARE.stop(); live=false; vOn=false; aOn=false; reflect(); dropPreview();
     $('#share-box').hidden=true; $('#share-stop').hidden=true; $('#share-loc').hidden=false; $('#share-reqs').innerHTML=''; $('#share-state').textContent='Location sharing stopped.'; };
 
   // Viewer: opened a share link  (#view=room.key~relay)
