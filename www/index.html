@@ -848,6 +848,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <div class="stat" style="margin-top:10px"><div class="k">Your private link — send it to one person</div><div class="v" id="share-link" style="font-size:12px;overflow-wrap:anywhere"></div></div>
         <div class="row"><button class="btn sm" id="share-copy">Copy link</button></div>
         <div id="share-reqs" style="margin-top:8px"></div>
+        <video id="share-remote-video" playsinline autoplay style="width:100%;border-radius:12px;margin-top:10px;display:none;background:#000"></video>
+        <div id="share-remote-audio" class="row" style="display:none;align-items:center;gap:8px;margin-top:8px"><span style="font-size:18px">🔊</span><span class="small muted">Live audio from the other person</span></div>
         <p class="small muted" id="share-state"></p>
         <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">🔧 Connection diagnostics</summary><pre class="diag-log" style="white-space:pre-wrap;word-break:break-word;font:11px var(--mono);color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;max-height:180px;overflow:auto"></pre></details>
       </div>
@@ -1346,6 +1348,9 @@ const SHARE = (function(){
   async function onOffer(offer){ diag('got offer — answering'); if(reqT){ clearInterval(reqT); reqT=null; } pc=new RTCPeerConnection(await iceConf()); wirePc();
     pc.ondatachannel=e=>{ dc=e.channel; wireDc(); };
     await pc.setRemoteDescription(offer); remoteSet=true;
+    // Two-way: adopt the pre-negotiated lanes so this side can ALSO send its own camera/mic.
+    pc.getTransceivers().forEach(t=>{ const k=t.receiver&&t.receiver.track&&t.receiver.track.kind; try{ t.direction='sendrecv'; }catch(e){} if(k==='video')vTx=t; else if(k==='audio')aTx=t; });
+    await applyLocalMedia();
     const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce(); await post('answer',pc.localDescription); diag('sent answer'); }
   // Media on/off no longer renegotiates (tracks swap on pre-negotiated lanes), so no extra offers.
   async function onRenegotiate(offer){ try{ await pc.setRemoteDescription(offer); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce(); await post('answer',pc.localDescription); }catch(e){} }
@@ -1414,7 +1419,10 @@ window.SHARE = SHARE;
       const s=await SHARE.startShare(Object.assign({pic:myPhoto},opts),{
         getMedia:(m)=>reconcilePreview(),                    // share the SAME stream the preview uses (one camera open)
         onRequest:(info)=>{ $('#share-reqs').innerHTML='<p class="small muted">'+esc(info.name||'Someone')+' opened your link — connecting…</p>'; },
-        onState:(st)=>{ $('#share-state').textContent = st==='linked'?'Connected — they can see your live location.':st==='connected'?'Linked.':'Status: '+st; }
+        onStream:(stream)=>{ const v=$('#share-remote-video'); if(v && v.srcObject!==stream){ v.srcObject=stream; v.muted=false; v.play&&v.play().catch(()=>{}); } },
+        onMedia:(kind,on)=>{ if(kind==='video'){ const v=$('#share-remote-video'); if(v) v.style.display=on?'':'none'; }
+          if(kind==='audio'){ const a=$('#share-remote-audio'); if(a) a.style.display=on?'':'none'; } },
+        onState:(st)=>{ $('#share-state').textContent = st==='linked'?'Connected — live.':st==='connected'?'Linked.':'Status: '+st; }
       });
       live=true;
       $('#share-box').hidden=false; $('#share-stop').hidden=false; $('#share-loc').hidden=true;
@@ -1444,10 +1452,10 @@ window.SHARE = SHARE;
   async function toggleFeed(which){
     if(which==='v'){ vOn=!vOn; } else { aOn=!aOn; }
     reflect();
-    try{ await reconcilePreview(); }                        // show the sharer their own feed right away
+    try{ await reconcilePreview(); }                        // show your own feed right away
     catch(e){ if(which==='v')vOn=false; else aOn=false; reflect(); alert('Camera/microphone blocked. Allow the permission in your phone settings, then try again.'); return; }
-    if(live){ await SHARE.setMedia({video:vOn,audio:aOn}); $('#share-state').textContent=feedLabel(); }
-    else { $('#share-state') && ($('#share-state').textContent=(vOn||aOn)?('Ready — '+feedLabel()+' Tap “Share location” to send your link.'):''); }
+    await SHARE.setMedia({video:vOn,audio:aOn});             // send on the live link if connected (host OR guest); no-op before connect
+    const ss=$('#share-state'); if(ss && !location.hash.startsWith('#view=')) ss.textContent = live?feedLabel():((vOn||aOn)?('Ready — '+feedLabel()+' Tap “Share location” to send your link.'):'');
   }
   $('#t-video').onclick=()=>toggleFeed('v');
   $('#t-audio').onclick=()=>toggleFeed('a');
@@ -1460,15 +1468,18 @@ window.SHARE = SHARE;
   if(h){
     if(h[3]){ try{ const s=h[3].replace(/-/g,'+').replace(/_/g,'/'); const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); CONFIG.relay=new TextDecoder().decode(u); }catch(e){} }
     let senderPic=null;
-    $('#share-card').querySelector('h2').textContent='Someone is sharing their location';
+    $('#share-card').querySelector('h2').textContent='Live location & video call';
     const rr=$('#relay-row'); if(rr) rr.style.display='none';
-    $('#share-loc').hidden=true; const tv=$('#t-video'),ta=$('#t-audio'),fh=$('#feed-hint'); if(tv)tv.hidden=true; if(ta)ta.hidden=true; if(fh)fh.hidden=true; $('#view-box').hidden=false;
+    // Viewer keeps the feed buttons (two-way): they can send their own camera/mic back.
+    $('#share-loc').hidden=true; const fh=$('#feed-hint'); if(fh) fh.textContent='Turn on Video feed or Audio feed to send your own camera/mic to the other person. Location is shared either way.';
+    $('#view-box').hidden=false;
     $('#view-title').innerHTML='<button class="btn go" id="view-accept">✅ Accept &amp; view on map</button>';
     $('#view-accept').onclick=()=>{
       $('#view-title').textContent='Live location'; $('#view-pos').textContent='connecting…';
-      $('#view-feedback').textContent='Waiting for the sharer to respond — keep their Pigeon app open on the Share screen.';
+      $('#view-feedback').textContent='Waiting for the other person to respond — keep both Pigeon apps open.';
       try{ document.querySelector('.map-wrap').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
       SHARE.view(h[1],h[2],{
+        getMedia:(m)=>reconcilePreview(),                    // two-way: send this phone's own camera/mic
         onState:(st)=>{ $('#view-state').textContent='Status: '+(st==='linked'?'connected':st==='connected'?'connected':st); },
         onStream:(stream)=>{ const v=$('#view-video'); if(v.srcObject!==stream){ v.srcObject=stream; v.muted=false; v.play&&v.play().catch(()=>{}); } },
         onMedia:(kind,on)=>{ if(kind==='video'){ const v=$('#view-video'); v.style.display=on?'':'none'; }
