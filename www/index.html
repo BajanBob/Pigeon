@@ -1315,7 +1315,7 @@ const SHARE = (function(){
   let pollTick=0;
   function startPoll(){ stopPoll(); pollTick=0; pollT=setInterval(async()=>{ try{ const r=await fetch(relay()+'/room/'+room+'?role='+role+'&since='+cursor); const j=await r.json(); const got=(j.msgs||[]); for(const m of got){ cursor=Math.max(cursor,m.seq); await handle(m); }
     if(role==='host' && !pc){ pollTick++; if(pollTick%8===1) diag('waiting for a viewer to open the link… (room '+(room||'').slice(0,8)+')'); }
-  }catch(e){ diag('relay poll error — check the relay URL'); } }, 1000); }
+  }catch(e){ pollTick++; if(pollTick%5===1) diag('cannot reach relay '+relay()+' — '+(e.message||'network error')+' (VPN/Private DNS/connection?)'); } }, 1000); }
   function stopPoll(){ if(pollT)clearInterval(pollT); pollT=null; }
 
   async function handle(m){
