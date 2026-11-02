@@ -1248,7 +1248,7 @@ drawCompass();
 const CONFIG = { relay: (()=>{ try{ return localStorage.getItem('pigeon-relay'); }catch(e){ return null; } })() || window.__PIGEON_RELAY || 'https://pigeon-relay.macholder67.workers.dev' };
 
 const SHARE = (function(){
-  let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false, vTx=null, aTx=null;
+  let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false, vTx=null, aTx=null, reqT=null, approving=false;
   const DIAG=[]; function diag(s){ const line=new Date().toLocaleTimeString()+' · '+s; DIAG.push(line); if(DIAG.length>60)DIAG.shift(); window.__pigeonDiag=DIAG; try{console.log('[pigeon]',s);}catch(e){} try{ document.querySelectorAll('.diag-log').forEach(el=>{ el.textContent=DIAG.slice(-14).join('\n'); el.scrollTop=el.scrollHeight; }); }catch(e){} cbs.onDiag&&cbs.onDiag(line); }
   const relay = ()=> (CONFIG.relay||'').replace(/\/+$/,'');
   const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -1269,7 +1269,10 @@ const SHARE = (function(){
   function stopPoll(){ if(pollT)clearInterval(pollT); pollT=null; }
 
   async function handle(m){
-    if(m.type==='request' && role==='host'){ cbs.onRequest && cbs.onRequest(m.data||{}); if(!offered){ offered=true; approve().catch(e=>diag('approve failed: '+e.message)); } }   // sender already consented by sending the link; viewer just accepts
+    if(m.type==='request' && role==='host'){ cbs.onRequest && cbs.onRequest(m.data||{});   // sender already consented by sending the link; viewer just accepts
+      const st = pc ? pc.connectionState : null;
+      if(!approving && (!pc || st==='failed' || st==='disconnected' || st==='closed')){ approve().catch(e=>diag('approve failed: '+e.message)); }
+      else { diag('request ignored (already '+(st||'none')+')'); } }
     else if(m.type==='offer' && role==='guest'){ if(!pc){ await onOffer(m.data); } else { await onRenegotiate(m.data); } }
     else if(m.type==='answer' && role==='host'){ try{ await pc.setRemoteDescription(m.data); remoteSet=true; diag('got answer — linking'); }catch(e){} }
     // 'ice' messages are no longer used (non-trickle) — ignored if an old client sends them.
@@ -1322,16 +1325,23 @@ const SHARE = (function(){
     diag('feeds set → video:'+(!!media.video)+' audio:'+(!!media.audio));
   }
   async function approve(){
-    diag('viewer accepted — building connection');
+    approving=true; diag('viewer accepted — building connection');
+    try{ if(pc){ try{pc.close();}catch(e){} } if(localStream){ /* keep preview stream */ }
     pc=new RTCPeerConnection(await iceConf()); wirePc();
     vTx=pc.addTransceiver('video',{direction:'sendrecv'});   // pre-negotiate the m-lines so feeds can start
     aTx=pc.addTransceiver('audio',{direction:'sendrecv'});   // later with zero renegotiation (robust on mobile)
     await applyLocalMedia();
     dc=pc.createDataChannel('loc'); wireDc();
     const offer=await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce(); remoteSet=false; await post('offer',pc.localDescription); diag('sent offer (location + feed lanes)');
+    }finally{ approving=false; }
   }
-  async function view(r,kB64,callbacks){ role='guest'; cbs=callbacks||{}; room=r; key=await importKey(unb64u(kB64)); cursor=0; remoteSet=false; pending=[]; startPoll(); diag('requesting connection from sharer'); await post('request',{name:'A Pigeon user'}); }
-  async function onOffer(offer){ diag('got offer — answering'); pc=new RTCPeerConnection(await iceConf()); wirePc();
+  async function view(r,kB64,callbacks){ role='guest'; cbs=callbacks||{}; room=r; key=await importKey(unb64u(kB64)); cursor=0; remoteSet=false; pending=[]; startPoll();
+    diag('requesting connection from sharer'); await post('request',{name:'A Pigeon user'});
+    // Keep knocking until the sharer answers — covers the sharer being briefly backgrounded or the link opened before they're ready.
+    clearInterval(reqT); let tries=0;
+    reqT=setInterval(()=>{ if(remoteSet || (pc&&pc.connectionState==='connected') || tries++>45){ clearInterval(reqT); reqT=null; return; }
+      diag('no answer yet — re-requesting ('+tries+')'); post('request',{name:'A Pigeon user'}); }, 4000); }
+  async function onOffer(offer){ diag('got offer — answering'); if(reqT){ clearInterval(reqT); reqT=null; } pc=new RTCPeerConnection(await iceConf()); wirePc();
     pc.ondatachannel=e=>{ dc=e.channel; wireDc(); };
     await pc.setRemoteDescription(offer); remoteSet=true;
     const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce(); await post('answer',pc.localDescription); diag('sent answer'); }
@@ -1345,7 +1355,10 @@ const SHARE = (function(){
     return media;
   }
   function updateLocation(loc){ lastLoc=loc; sendLoc(loc); }
-  function stop(){ stopPoll(); clearInterval(locT); try{dc&&dc.close();}catch(e){} try{pc&&pc.close();}catch(e){} if(localStream)localStream.getTracks().forEach(t=>t.stop()); pc=dc=null; role=null; vTx=aTx=null; diag('stopped'); }
+  function stop(){ stopPoll(); clearInterval(locT); if(reqT){clearInterval(reqT);reqT=null;} try{dc&&dc.close();}catch(e){} try{pc&&pc.close();}catch(e){} if(localStream)localStream.getTracks().forEach(t=>t.stop()); pc=dc=null; role=null; vTx=aTx=null; offered=false; diag('stopped'); }
+  // When the app returns to the foreground, make sure we're still polling (mobile suspends background timers).
+  if(typeof document!=='undefined') document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible' && role && (!pc || pc.connectionState!=='connected')){ if(!pollT){ startPoll(); diag('back in foreground — polling resumed'); } } });
   return { startShare, approve, view, updateLocation, setMedia, stop };
 })();
 window.SHARE = SHARE;
@@ -1451,6 +1464,7 @@ window.SHARE = SHARE;
     $('#view-title').innerHTML='<button class="btn go" id="view-accept">✅ Accept &amp; view on map</button>';
     $('#view-accept').onclick=()=>{
       $('#view-title').textContent='Live location'; $('#view-pos').textContent='connecting…';
+      $('#view-feedback').textContent='Waiting for the sharer to respond — keep their Pigeon app open on the Share screen.';
       try{ document.querySelector('.map-wrap').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
       SHARE.view(h[1],h[2],{
         onState:(st)=>{ $('#view-state').textContent='Status: '+(st==='linked'?'connected':st==='connected'?'connected':st); },
