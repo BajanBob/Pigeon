@@ -1,12 +1,9 @@
-name: Build Pigeon (Android · iOS · Windows)
+name: Build Einstein (Android · iOS · Windows · Linux · Raspberry Pi · SDR tools)
 
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
   workflow_dispatch:
-  release:
-    types: [ published ]
 
 permissions:
   contents: write
@@ -18,42 +15,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+        with: { node-version: '20' }
       - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Install dependencies
-        run: npm install
-      - name: Add Android platform
-        run: npx cap add android
-      - name: Generate app icons (carrier pigeon)
-        run: npx @capacitor/assets generate --android --iconBackgroundColor '#0a0f14' --iconBackgroundColorDark '#0a0f14' || echo "assets step skipped"
-      - name: Patch permissions
-        run: node scripts/patch-android.mjs
-      - name: Sync web assets
-        run: npx cap sync android
-      - name: Build debug APK
-        run: |
-          cd android
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
-      - name: Stage APK
-        run: |
-          mkdir -p out
-          cp android/app/build/outputs/apk/debug/app-debug.apk out/Pigeon.apk
+        with: { distribution: temurin, java-version: '17' }
+      - run: npm install
+      - run: npx cap add android
+      - run: npx @capacitor/assets generate --android --iconBackgroundColor '#0a0f14' --iconBackgroundColorDark '#0a0f14' || echo skip
+      - run: npx cap sync android
+      - run: cd android && chmod +x ./gradlew && ./gradlew assembleDebug
+      - run: mkdir -p out && cp android/app/build/outputs/apk/debug/app-debug.apk out/Einstein.apk
       - uses: actions/upload-artifact@v4
-        with:
-          name: Pigeon-Android-APK
-          path: out/Pigeon.apk
-      - name: Publish to release
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || github.event_name == 'push' || startsWith(github.ref, 'refs/tags/')
+        with: { name: Einstein-Android, path: out/Einstein.apk }
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0
-          name: Pigeon v1.0.0
-          files: out/Pigeon.apk
+        with: { tag_name: v1.0.0, name: Einstein v1.0.0, files: out/Einstein.apk }
 
   ios:
     name: iOS IPA (unsigned)
@@ -61,98 +37,95 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm install
-      - name: Add iOS platform
-        run: npx cap add ios
-      - name: Generate app icons (carrier pigeon)
-        run: npx @capacitor/assets generate --ios --iconBackgroundColor '#0a0f14' --iconBackgroundColorDark '#0a0f14' || echo "assets step skipped"
-      - name: Patch permissions
-        run: bash scripts/patch-ios.sh
-      - name: Sync web assets
-        run: npx cap sync ios
+        with: { node-version: '20' }
+      - run: npm install
+      - run: npx cap add ios
+      - run: npx @capacitor/assets generate --ios --iconBackgroundColor '#0a0f14' --iconBackgroundColorDark '#0a0f14' || echo skip
+      - run: npx cap sync ios
       - name: Build unsigned .app
         run: |
-          xcodebuild -workspace ios/App/App.xcworkspace \
-            -scheme App -configuration Release -sdk iphoneos \
-            -derivedDataPath build \
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
+            -sdk iphoneos -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" PROVISIONING_PROFILE="" \
             clean build
-      - name: Package unsigned IPA
+      - name: Package IPA
         run: |
-          mkdir -p out Payload
-          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
-          zip -r out/Pigeon-iPhone-unsigned.ipa Payload
+          mkdir -p out Payload && cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -r out/Einstein-iPhone-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
-        with:
-          name: Pigeon-iOS-IPA
-          path: out/Pigeon-iPhone-unsigned.ipa
-      - name: Publish to release
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || github.event_name == 'push' || startsWith(github.ref, 'refs/tags/')
+        with: { name: Einstein-iOS, path: out/Einstein-iPhone-unsigned.ipa }
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0
-          name: Pigeon v1.0.0
-          files: out/Pigeon-iPhone-unsigned.ipa
-
-  linux:
-    name: Linux (AppImage + deb)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm install
-      - name: Build Linux packages
-        run: npx electron-builder --linux --publish never
-      - name: Stage packages
-        run: |
-          mkdir -p out
-          cp dist-win/*.AppImage out/ 2>/dev/null || true
-          cp dist-win/*.deb out/ 2>/dev/null || true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Pigeon-Linux
-          path: out/*
-      - name: Publish to release
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || github.event_name == 'push' || startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0
-          name: Pigeon v1.0.0
-          files: |
-            out/*.AppImage
-            out/*.deb
+        with: { tag_name: v1.0.0, name: Einstein v1.0.0, files: out/Einstein-iPhone-unsigned.ipa }
 
   windows:
-    name: Windows installer (.exe)
+    name: Windows (.exe)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm install
-      - name: Build Windows installer
-        run: npx electron-builder --win --publish never
-      - name: Stage installer
+        with: { node-version: '20' }
+      - run: npm install
+      - run: npx electron-builder --win --publish never
+      - name: Stage
         shell: bash
+        run: mkdir -p out && cp dist/*.exe out/ || true
+      - uses: actions/upload-artifact@v4
+        with: { name: Einstein-Windows, path: out/*.exe }
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with: { tag_name: v1.0.0, name: Einstein v1.0.0, files: out/*.exe }
+
+  linux:
+    name: Linux + Raspberry Pi (x64 · arm64 · armv7l)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install
+      - name: Build x64 + Raspberry Pi (arm64, armv7l)
+        run: npx electron-builder --linux AppImage deb --x64 --arm64 --armv7l --publish never
+      - name: Stage
         run: |
           mkdir -p out
-          cp dist-win/*.exe out/ || true
+          cp dist/*.AppImage out/ 2>/dev/null || true
+          cp dist/*.deb out/ 2>/dev/null || true
       - uses: actions/upload-artifact@v4
-        with:
-          name: Pigeon-Windows-Setup
-          path: out/*.exe
-      - name: Publish to release
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || github.event_name == 'push' || startsWith(github.ref, 'refs/tags/')
+        with: { name: Einstein-Linux-RPi, path: out/* }
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0
-          name: Pigeon v1.0.0
-          files: out/*.exe
+          name: Einstein v1.0.0
+          files: |
+            out/*.AppImage
+            out/*.deb
+
+  sdr-tools:
+    name: SDR / RF tools bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package rf/ tools (run on any Python 3 host + SDR)
+        run: |
+          mkdir -p out
+          tar -czf out/einstein-sdr-rf-tools.tar.gz rf/ SPECIFICATIONS.md
+          echo "numpy" > out/requirements.txt
+          echo "scikit-learn  # for neural_receiver_compare.py" >> out/requirements.txt
+          echo "sounddevice   # standalone station engine: live soundcard capture/playback (einstein_audio.py)" >> out/requirements.txt
+          echo "pyserial      # standalone station engine: serial/CI-V/Yaesu CAT PTT (einstein_ptt.py)" >> out/requirements.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: Einstein-SDR-RF-tools, path: out/* }
+      - name: Publish
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: Einstein v1.0.0
+          files: |
+            out/einstein-sdr-rf-tools.tar.gz
+            out/requirements.txt

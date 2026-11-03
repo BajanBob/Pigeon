@@ -1,0 +1,4 @@
+numpy
+sounddevice   # standalone station engine: live soundcard capture/playback (rf/einstein_audio.py)
+pyserial      # standalone station engine: serial / Icom CI-V / Yaesu CAT PTT (rf/einstein_ptt.py)
+scikit-learn  # optional, for rf/neural_receiver_compare.py

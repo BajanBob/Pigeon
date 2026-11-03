@@ -3,1717 +3,1099 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark">
-<title>Pigeon — Navigation</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Crect width='1024' height='1024' rx='224' fill='%230a0f14'/%3E%3Cg transform='translate(512 500) rotate(-12)'%3E%3Cpath d='M-40 -30 C -150 -210 -300 -250 -360 -210 C -250 -170 -180 -90 -70 -40 Z' fill='%23b7c9d8'/%3E%3Cpath d='M-70 -20 C -30 -90 90 -110 190 -70 C 250 -46 230 60 150 100 C 70 136 -40 120 -90 60 C -110 30 -100 10 -70 -20 Z' fill='%237f94a8'/%3E%3Ccircle cx='200' cy='-78' r='56' fill='%237f94a8'/%3E%3Cpath d='M250 -86 L 316 -74 L 250 -56 Z' fill='%23ff8a1e'/%3E%3Ccircle cx='214' cy='-90' r='11' fill='%230e1724'/%3E%3Cpath d='M30 -10 C -40 160 -170 260 -300 270 C -210 160 -150 60 -40 20 Z' fill='%23b7c9d8'/%3E%3Crect x='34' y='166' width='52' height='30' rx='8' fill='%23ff8a1e'/%3E%3C/g%3E%3C/svg%3E">
-<style>/* leaflet 1.9.4 */
-/* required styles */
-
-.leaflet-pane,
-.leaflet-tile,
-.leaflet-marker-icon,
-.leaflet-marker-shadow,
-.leaflet-tile-container,
-.leaflet-pane > svg,
-.leaflet-pane > canvas,
-.leaflet-zoom-box,
-.leaflet-image-layer,
-.leaflet-layer {
-	position: absolute;
-	left: 0;
-	top: 0;
-	}
-.leaflet-container {
-	overflow: hidden;
-	}
-.leaflet-tile,
-.leaflet-marker-icon,
-.leaflet-marker-shadow {
-	-webkit-user-select: none;
-	   -moz-user-select: none;
-	        user-select: none;
-	  -webkit-user-drag: none;
-	}
-/* Prevents IE11 from highlighting tiles in blue */
-.leaflet-tile::selection {
-	background: transparent;
-}
-/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
-.leaflet-safari .leaflet-tile {
-	image-rendering: -webkit-optimize-contrast;
-	}
-/* hack that prevents hw layers "stretching" when loading new tiles */
-.leaflet-safari .leaflet-tile-container {
-	width: 1600px;
-	height: 1600px;
-	-webkit-transform-origin: 0 0;
-	}
-.leaflet-marker-icon,
-.leaflet-marker-shadow {
-	display: block;
-	}
-/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
-/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
-.leaflet-container .leaflet-overlay-pane svg {
-	max-width: none !important;
-	max-height: none !important;
-	}
-.leaflet-container .leaflet-marker-pane img,
-.leaflet-container .leaflet-shadow-pane img,
-.leaflet-container .leaflet-tile-pane img,
-.leaflet-container img.leaflet-image-layer,
-.leaflet-container .leaflet-tile {
-	max-width: none !important;
-	max-height: none !important;
-	width: auto;
-	padding: 0;
-	}
-
-.leaflet-container img.leaflet-tile {
-	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
-	mix-blend-mode: plus-lighter;
-}
-
-.leaflet-container.leaflet-touch-zoom {
-	-ms-touch-action: pan-x pan-y;
-	touch-action: pan-x pan-y;
-	}
-.leaflet-container.leaflet-touch-drag {
-	-ms-touch-action: pinch-zoom;
-	/* Fallback for FF which doesn't support pinch-zoom */
-	touch-action: none;
-	touch-action: pinch-zoom;
-}
-.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
-	-ms-touch-action: none;
-	touch-action: none;
-}
-.leaflet-container {
-	-webkit-tap-highlight-color: transparent;
-}
-.leaflet-container a {
-	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
-}
-.leaflet-tile {
-	filter: inherit;
-	visibility: hidden;
-	}
-.leaflet-tile-loaded {
-	visibility: inherit;
-	}
-.leaflet-zoom-box {
-	width: 0;
-	height: 0;
-	-moz-box-sizing: border-box;
-	     box-sizing: border-box;
-	z-index: 800;
-	}
-/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
-.leaflet-overlay-pane svg {
-	-moz-user-select: none;
-	}
-
-.leaflet-pane         { z-index: 400; }
-
-.leaflet-tile-pane    { z-index: 200; }
-.leaflet-overlay-pane { z-index: 400; }
-.leaflet-shadow-pane  { z-index: 500; }
-.leaflet-marker-pane  { z-index: 600; }
-.leaflet-tooltip-pane   { z-index: 650; }
-.leaflet-popup-pane   { z-index: 700; }
-
-.leaflet-map-pane canvas { z-index: 100; }
-.leaflet-map-pane svg    { z-index: 200; }
-
-.leaflet-vml-shape {
-	width: 1px;
-	height: 1px;
-	}
-.lvml {
-	behavior: url(#default#VML);
-	display: inline-block;
-	position: absolute;
-	}
-
-
-/* control positioning */
-
-.leaflet-control {
-	position: relative;
-	z-index: 800;
-	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
-	pointer-events: auto;
-	}
-.leaflet-top,
-.leaflet-bottom {
-	position: absolute;
-	z-index: 1000;
-	pointer-events: none;
-	}
-.leaflet-top {
-	top: 0;
-	}
-.leaflet-right {
-	right: 0;
-	}
-.leaflet-bottom {
-	bottom: 0;
-	}
-.leaflet-left {
-	left: 0;
-	}
-.leaflet-control {
-	float: left;
-	clear: both;
-	}
-.leaflet-right .leaflet-control {
-	float: right;
-	}
-.leaflet-top .leaflet-control {
-	margin-top: 10px;
-	}
-.leaflet-bottom .leaflet-control {
-	margin-bottom: 10px;
-	}
-.leaflet-left .leaflet-control {
-	margin-left: 10px;
-	}
-.leaflet-right .leaflet-control {
-	margin-right: 10px;
-	}
-
-
-/* zoom and fade animations */
-
-.leaflet-fade-anim .leaflet-popup {
-	opacity: 0;
-	-webkit-transition: opacity 0.2s linear;
-	   -moz-transition: opacity 0.2s linear;
-	        transition: opacity 0.2s linear;
-	}
-.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
-	opacity: 1;
-	}
-.leaflet-zoom-animated {
-	-webkit-transform-origin: 0 0;
-	    -ms-transform-origin: 0 0;
-	        transform-origin: 0 0;
-	}
-svg.leaflet-zoom-animated {
-	will-change: transform;
-}
-
-.leaflet-zoom-anim .leaflet-zoom-animated {
-	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
-	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
-	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
-	}
-.leaflet-zoom-anim .leaflet-tile,
-.leaflet-pan-anim .leaflet-tile {
-	-webkit-transition: none;
-	   -moz-transition: none;
-	        transition: none;
-	}
-
-.leaflet-zoom-anim .leaflet-zoom-hide {
-	visibility: hidden;
-	}
-
-
-/* cursors */
-
-.leaflet-interactive {
-	cursor: pointer;
-	}
-.leaflet-grab {
-	cursor: -webkit-grab;
-	cursor:    -moz-grab;
-	cursor:         grab;
-	}
-.leaflet-crosshair,
-.leaflet-crosshair .leaflet-interactive {
-	cursor: crosshair;
-	}
-.leaflet-popup-pane,
-.leaflet-control {
-	cursor: auto;
-	}
-.leaflet-dragging .leaflet-grab,
-.leaflet-dragging .leaflet-grab .leaflet-interactive,
-.leaflet-dragging .leaflet-marker-draggable {
-	cursor: move;
-	cursor: -webkit-grabbing;
-	cursor:    -moz-grabbing;
-	cursor:         grabbing;
-	}
-
-/* marker & overlays interactivity */
-.leaflet-marker-icon,
-.leaflet-marker-shadow,
-.leaflet-image-layer,
-.leaflet-pane > svg path,
-.leaflet-tile-container {
-	pointer-events: none;
-	}
-
-.leaflet-marker-icon.leaflet-interactive,
-.leaflet-image-layer.leaflet-interactive,
-.leaflet-pane > svg path.leaflet-interactive,
-svg.leaflet-image-layer.leaflet-interactive path {
-	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
-	pointer-events: auto;
-	}
-
-/* visual tweaks */
-
-.leaflet-container {
-	background: #ddd;
-	outline-offset: 1px;
-	}
-.leaflet-container a {
-	color: #0078A8;
-	}
-.leaflet-zoom-box {
-	border: 2px dotted #38f;
-	background: rgba(255,255,255,0.5);
-	}
-
-
-/* general typography */
-.leaflet-container {
-	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
-	font-size: 12px;
-	font-size: 0.75rem;
-	line-height: 1.5;
-	}
-
-
-/* general toolbar styles */
-
-.leaflet-bar {
-	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-	border-radius: 4px;
-	}
-.leaflet-bar a {
-	background-color: #fff;
-	border-bottom: 1px solid #ccc;
-	width: 26px;
-	height: 26px;
-	line-height: 26px;
-	display: block;
-	text-align: center;
-	text-decoration: none;
-	color: black;
-	}
-.leaflet-bar a,
-.leaflet-control-layers-toggle {
-	background-position: 50% 50%;
-	background-repeat: no-repeat;
-	display: block;
-	}
-.leaflet-bar a:hover,
-.leaflet-bar a:focus {
-	background-color: #f4f4f4;
-	}
-.leaflet-bar a:first-child {
-	border-top-left-radius: 4px;
-	border-top-right-radius: 4px;
-	}
-.leaflet-bar a:last-child {
-	border-bottom-left-radius: 4px;
-	border-bottom-right-radius: 4px;
-	border-bottom: none;
-	}
-.leaflet-bar a.leaflet-disabled {
-	cursor: default;
-	background-color: #f4f4f4;
-	color: #bbb;
-	}
-
-.leaflet-touch .leaflet-bar a {
-	width: 30px;
-	height: 30px;
-	line-height: 30px;
-	}
-.leaflet-touch .leaflet-bar a:first-child {
-	border-top-left-radius: 2px;
-	border-top-right-radius: 2px;
-	}
-.leaflet-touch .leaflet-bar a:last-child {
-	border-bottom-left-radius: 2px;
-	border-bottom-right-radius: 2px;
-	}
-
-/* zoom control */
-
-.leaflet-control-zoom-in,
-.leaflet-control-zoom-out {
-	font: bold 18px 'Lucida Console', Monaco, monospace;
-	text-indent: 1px;
-	}
-
-.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
-	font-size: 22px;
-	}
-
-
-/* layers control */
-
-.leaflet-control-layers {
-	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
-	background: #fff;
-	border-radius: 5px;
-	}
-.leaflet-control-layers-toggle {
-	background-image: url(images/layers.png);
-	width: 36px;
-	height: 36px;
-	}
-.leaflet-retina .leaflet-control-layers-toggle {
-	background-image: url(images/layers-2x.png);
-	background-size: 26px 26px;
-	}
-.leaflet-touch .leaflet-control-layers-toggle {
-	width: 44px;
-	height: 44px;
-	}
-.leaflet-control-layers .leaflet-control-layers-list,
-.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
-	display: none;
-	}
-.leaflet-control-layers-expanded .leaflet-control-layers-list {
-	display: block;
-	position: relative;
-	}
-.leaflet-control-layers-expanded {
-	padding: 6px 10px 6px 6px;
-	color: #333;
-	background: #fff;
-	}
-.leaflet-control-layers-scrollbar {
-	overflow-y: scroll;
-	overflow-x: hidden;
-	padding-right: 5px;
-	}
-.leaflet-control-layers-selector {
-	margin-top: 2px;
-	position: relative;
-	top: 1px;
-	}
-.leaflet-control-layers label {
-	display: block;
-	font-size: 13px;
-	font-size: 1.08333em;
-	}
-.leaflet-control-layers-separator {
-	height: 0;
-	border-top: 1px solid #ddd;
-	margin: 5px -10px 5px -6px;
-	}
-
-/* Default icon URLs */
-.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
-	background-image: url(images/marker-icon.png);
-	}
-
-
-/* attribution and scale controls */
-
-.leaflet-container .leaflet-control-attribution {
-	background: #fff;
-	background: rgba(255, 255, 255, 0.8);
-	margin: 0;
-	}
-.leaflet-control-attribution,
-.leaflet-control-scale-line {
-	padding: 0 5px;
-	color: #333;
-	line-height: 1.4;
-	}
-.leaflet-control-attribution a {
-	text-decoration: none;
-	}
-.leaflet-control-attribution a:hover,
-.leaflet-control-attribution a:focus {
-	text-decoration: underline;
-	}
-.leaflet-attribution-flag {
-	display: inline !important;
-	vertical-align: baseline !important;
-	width: 1em;
-	height: 0.6669em;
-	}
-.leaflet-left .leaflet-control-scale {
-	margin-left: 5px;
-	}
-.leaflet-bottom .leaflet-control-scale {
-	margin-bottom: 5px;
-	}
-.leaflet-control-scale-line {
-	border: 2px solid #777;
-	border-top: none;
-	line-height: 1.1;
-	padding: 2px 5px 1px;
-	white-space: nowrap;
-	-moz-box-sizing: border-box;
-	     box-sizing: border-box;
-	background: rgba(255, 255, 255, 0.8);
-	text-shadow: 1px 1px #fff;
-	}
-.leaflet-control-scale-line:not(:first-child) {
-	border-top: 2px solid #777;
-	border-bottom: none;
-	margin-top: -2px;
-	}
-.leaflet-control-scale-line:not(:first-child):not(:last-child) {
-	border-bottom: 2px solid #777;
-	}
-
-.leaflet-touch .leaflet-control-attribution,
-.leaflet-touch .leaflet-control-layers,
-.leaflet-touch .leaflet-bar {
-	box-shadow: none;
-	}
-.leaflet-touch .leaflet-control-layers,
-.leaflet-touch .leaflet-bar {
-	border: 2px solid rgba(0,0,0,0.2);
-	background-clip: padding-box;
-	}
-
-
-/* popup */
-
-.leaflet-popup {
-	position: absolute;
-	text-align: center;
-	margin-bottom: 20px;
-	}
-.leaflet-popup-content-wrapper {
-	padding: 1px;
-	text-align: left;
-	border-radius: 12px;
-	}
-.leaflet-popup-content {
-	margin: 13px 24px 13px 20px;
-	line-height: 1.3;
-	font-size: 13px;
-	font-size: 1.08333em;
-	min-height: 1px;
-	}
-.leaflet-popup-content p {
-	margin: 17px 0;
-	margin: 1.3em 0;
-	}
-.leaflet-popup-tip-container {
-	width: 40px;
-	height: 20px;
-	position: absolute;
-	left: 50%;
-	margin-top: -1px;
-	margin-left: -20px;
-	overflow: hidden;
-	pointer-events: none;
-	}
-.leaflet-popup-tip {
-	width: 17px;
-	height: 17px;
-	padding: 1px;
-
-	margin: -10px auto 0;
-	pointer-events: auto;
-
-	-webkit-transform: rotate(45deg);
-	   -moz-transform: rotate(45deg);
-	    -ms-transform: rotate(45deg);
-	        transform: rotate(45deg);
-	}
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
-	background: white;
-	color: #333;
-	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
-	}
-.leaflet-container a.leaflet-popup-close-button {
-	position: absolute;
-	top: 0;
-	right: 0;
-	border: none;
-	text-align: center;
-	width: 24px;
-	height: 24px;
-	font: 16px/24px Tahoma, Verdana, sans-serif;
-	color: #757575;
-	text-decoration: none;
-	background: transparent;
-	}
-.leaflet-container a.leaflet-popup-close-button:hover,
-.leaflet-container a.leaflet-popup-close-button:focus {
-	color: #585858;
-	}
-.leaflet-popup-scrolled {
-	overflow: auto;
-	}
-
-.leaflet-oldie .leaflet-popup-content-wrapper {
-	-ms-zoom: 1;
-	}
-.leaflet-oldie .leaflet-popup-tip {
-	width: 24px;
-	margin: 0 auto;
-
-	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
-	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
-	}
-
-.leaflet-oldie .leaflet-control-zoom,
-.leaflet-oldie .leaflet-control-layers,
-.leaflet-oldie .leaflet-popup-content-wrapper,
-.leaflet-oldie .leaflet-popup-tip {
-	border: 1px solid #999;
-	}
-
-
-/* div icon */
-
-.leaflet-div-icon {
-	background: #fff;
-	border: 1px solid #666;
-	}
-
-
-/* Tooltip */
-/* Base styles for the element that has a tooltip */
-.leaflet-tooltip {
-	position: absolute;
-	padding: 6px;
-	background-color: #fff;
-	border: 1px solid #fff;
-	border-radius: 3px;
-	color: #222;
-	white-space: nowrap;
-	-webkit-user-select: none;
-	-moz-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
-	pointer-events: none;
-	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-	}
-.leaflet-tooltip.leaflet-interactive {
-	cursor: pointer;
-	pointer-events: auto;
-	}
-.leaflet-tooltip-top:before,
-.leaflet-tooltip-bottom:before,
-.leaflet-tooltip-left:before,
-.leaflet-tooltip-right:before {
-	position: absolute;
-	pointer-events: none;
-	border: 6px solid transparent;
-	background: transparent;
-	content: "";
-	}
-
-/* Directions */
-
-.leaflet-tooltip-bottom {
-	margin-top: 6px;
-}
-.leaflet-tooltip-top {
-	margin-top: -6px;
-}
-.leaflet-tooltip-bottom:before,
-.leaflet-tooltip-top:before {
-	left: 50%;
-	margin-left: -6px;
-	}
-.leaflet-tooltip-top:before {
-	bottom: 0;
-	margin-bottom: -12px;
-	border-top-color: #fff;
-	}
-.leaflet-tooltip-bottom:before {
-	top: 0;
-	margin-top: -12px;
-	margin-left: -6px;
-	border-bottom-color: #fff;
-	}
-.leaflet-tooltip-left {
-	margin-left: -6px;
-}
-.leaflet-tooltip-right {
-	margin-left: 6px;
-}
-.leaflet-tooltip-left:before,
-.leaflet-tooltip-right:before {
-	top: 50%;
-	margin-top: -6px;
-	}
-.leaflet-tooltip-left:before {
-	right: 0;
-	margin-right: -12px;
-	border-left-color: #fff;
-	}
-.leaflet-tooltip-right:before {
-	left: 0;
-	margin-left: -12px;
-	border-right-color: #fff;
-	}
-
-/* Printing */
-
-@media print {
-	/* Prevent printers from removing background-images of controls. */
-	.leaflet-control {
-		-webkit-print-color-adjust: exact;
-		print-color-adjust: exact;
-		}
-	}
-
-</style>
+<meta name="color-scheme" content="dark light">
+<title>Einstein — Weak-Signal Station Log</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0f14'/%3E%3Cg fill='none' stroke='%2366e0ff' stroke-width='3'%3E%3Ccircle cx='32' cy='32' r='6'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='9'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='9' transform='rotate(60 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='9' transform='rotate(120 32 32)'/%3E%3C/g%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg:#0b1016; --card:#121b24; --line:#223040; --fg:#e8f1f8; --muted:#8aa0b2;
-    --accent:#36c4ff; --go:#2bd47a; --warn:#ffb547; --ink:#061016;
-    --mono:ui-monospace,"Share Tech Mono",Menlo,Consolas,monospace;
-    --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  }
-  /* Night theme = dimmer; Red theme = red-on-black to protect night vision */
-  :root[data-theme="night"]{ --bg:#05080b; --card:#0a1119; --line:#16222e; --fg:#b9ccda; --muted:#5e7488; --accent:#2a93c4; }
-  :root[data-theme="red"]{ --bg:#0a0000; --card:#160303; --line:#3a0d0d; --fg:#ff4d4d; --muted:#b23b3b; --accent:#ff6a6a; --go:#ff5555; --warn:#ff8a8a; }
-  :root[data-theme="red"] .map-wrap{ filter:grayscale(1) brightness(.5) sepia(1) hue-rotate(-50deg) saturate(4); }
+  :root{ --bg:#070b10; --card:#0e151d; --line:#1d2a36; --fg:#e6eef6; --muted:#8299ad; --accent:#66e0ff; --accent2:#ffb648; --ok:#45d98a; --bad:#ff5d6c; --mono:ui-monospace,Menlo,Consolas,monospace; --body:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  /* ---- field faceplates ---- */
+  /* DAY: sunlight-readable, high-contrast */
+  :root[data-theme="day"]{ --bg:#eef2f5; --card:#ffffff; --line:#9fb1bf; --fg:#060d13; --muted:#33495a; --accent:#0b5fab; --accent2:#0a6b45; --ok:#0a7d2e; --bad:#ad0f17; }
+  :root[data-theme="day"] body{ font-weight:500; }
+  :root[data-theme="day"] .stat .v, :root[data-theme="day"] h1{ font-weight:700; }
+  /* NIGHT: NVG-safe red monochrome on black — preserves dark adaptation */
+  :root[data-theme="night"]{ --bg:#000000; --card:#0a0202; --line:#3a0e0e; --fg:#ff4b4b; --muted:#b23b3b; --accent:#ff5a5a; --accent2:#ff7a4a; --ok:#ff7a7a; --bad:#ff2020; }
+  :root[data-theme="night"] body{ filter:saturate(0.85); }
+  :root[data-theme="night"] canvas{ filter:brightness(0.85); }
+  :root[data-theme="day"] .stat{ background:#e9eff5; }
+  :root[data-theme="night"] .stat{ background:#0a0202; }
+  :root[data-theme="night"] .logo{ filter:grayscale(1) brightness(0.7) sepia(1) saturate(8) hue-rotate(-18deg); }
+  :root[data-theme="night"] .tbtn.on, :root[data-theme="night"] .tabs button.on{ color:var(--accent); border-color:var(--accent); }
   *{box-sizing:border-box} html,body{margin:0}
-  body{background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.45;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-  .top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:500}
-  .logo{font-size:26px;display:inline-flex;align-items:center;line-height:0}
-  .top h1{margin:0;font-size:20px;letter-spacing:.02em}
-  .top .sub{margin:0;color:var(--muted);font-size:12px}
-  .theme{margin-left:auto;display:flex;gap:6px}
-  .tbtn{font:600 12px var(--body);border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:6px 11px;cursor:pointer}
-  .tbtn.on{border-color:var(--accent);color:var(--accent)}
-  #t-video.on,#t-audio.on,#relay-only.on{border-color:var(--accent);color:var(--accent);font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
-  .st-tabs{display:flex;gap:6px;margin-top:8px} .st-tabs button{flex:1}
-  .st-chip{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:7px 11px;font:600 12px var(--body);cursor:pointer}
-  .st-chip.on{border-color:var(--accent2,#36c4ff);color:var(--accent2,#36c4ff);box-shadow:inset 0 0 0 1px var(--accent2,#36c4ff)}
-  .st-carrier{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:9px;padding:8px;margin-top:7px;font-size:13px}
-  .st-help{display:inline-flex;width:15px;height:15px;border-radius:50%;border:1px solid var(--muted);color:var(--muted);font-size:10px;align-items:center;justify-content:center;cursor:help;position:relative}
-  .st-help:hover::after,.st-help:focus::after{content:attr(data-help);position:absolute;left:0;top:140%;width:220px;background:#05232f;color:#dff2fb;border:1px solid var(--accent2,#36c4ff);border-radius:8px;padding:8px 10px;font:400 12px/1.4 var(--body);z-index:30}
-  main{max-width:720px;margin:0 auto;padding:14px 16px 40px;display:grid;gap:14px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
-  .card h2{margin:0 0 10px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);padding:0 0 40px}
+  header{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:10}
+  .logo{width:34px;height:34px;flex:none}
+  h1{font-size:19px;margin:0;letter-spacing:.02em}
+  .sub{color:var(--muted);font-size:12px;margin:0}
+  .wrap{max-width:860px;margin:0 auto;padding:0 16px}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:12px 16px 4px;position:sticky;top:63px;background:var(--bg);z-index:9}
+  .tabs button{flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:8px 14px;font:600 13px var(--body);cursor:pointer;white-space:nowrap}
+  .tabs button.on{border-color:var(--accent);color:var(--accent)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
+  h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,select,textarea{width:100%;background:#0a1017;border:1px solid var(--line);border-radius:9px;color:var(--fg);padding:10px;font:14px var(--body)}
+  :root[data-theme="day"] input,:root[data-theme="day"] select,:root[data-theme="day"] textarea{background:#f3f7fb}
+  :root[data-theme="night"] input,:root[data-theme="night"] select,:root[data-theme="night"] textarea{background:#140303;color:var(--fg)}
+  .faceplate{display:flex;gap:4px}
+  .faceplate button{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:6px 9px;font:600 12px var(--body);cursor:pointer}
+  .faceplate button.on{border-color:var(--accent);color:var(--accent)}
+  textarea{min-height:90px;font:12px var(--mono);resize:vertical}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .stat{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
-  .stat .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-  .stat .v{font-family:var(--mono);font-size:20px;color:var(--fg);margin-top:3px;overflow-wrap:anywhere}
-  .stat .v small{font-size:12px;color:var(--muted)}
-  .big{font-family:var(--mono);font-size:26px}
-  /* compass */
-  .compass-wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center}
-  .compass{width:200px;height:200px;flex:none}
-  .cinfo{flex:1;min-width:180px;display:grid;gap:8px}
-  /* destination input */
-  .in{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:10px 12px;font:16px var(--mono)}
-  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .btn{appearance:none;border:1px solid var(--line);background:#16222e;color:var(--fg);border-radius:10px;padding:10px 14px;font:600 14px var(--body);cursor:pointer}
-  .btn.go{background:var(--accent);color:var(--ink);border-color:transparent}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .btn{border:1px solid var(--line);background:#16222e;color:var(--fg);border-radius:9px;padding:10px 14px;font:600 14px var(--body);cursor:pointer}
+  .btn.go{background:var(--accent);border-color:transparent;color:#042a33}
   .btn.sm{padding:7px 11px;font-size:13px}
-  .map-wrap{height:340px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
-  #map{height:100%;background:#0a1119}
-  .leaflet-container{background:#0a1119;font-family:var(--body)}
-  .layers{display:flex;gap:6px;margin-bottom:8px}
-  .layers button{flex:1;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:9px;padding:7px;font:600 13px var(--body);cursor:pointer}
-  .layers button.on{border-color:var(--accent);color:var(--accent)}
-  .lmk{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
-  .lmk .b{font-family:var(--mono);color:var(--accent);min-width:88px}
-  .muted{color:var(--muted)} .small{font-size:12.5px}
-  .foot{color:var(--muted);font-size:12px;text-align:center;padding:4px 0 10px}
-  .warn{background:#2a2410;border:1px solid #4a3c12;color:var(--warn);border-radius:10px;padding:8px 11px;font-size:13px}
-  :root[data-theme="red"] .warn{background:#1a0505;border-color:#4a1010;color:var(--warn)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  .stat{background:#0a1017;border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+  .stat .k{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{font:600 22px var(--mono);margin-top:3px}
+  .muted{color:var(--muted)} .small{font-size:12px} .ok{color:var(--ok)} .bad{color:var(--bad)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  td.mono{font-family:var(--mono)}
+  .scroll{overflow-x:auto}
+  .pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:11px;color:var(--muted)}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  footer{color:var(--muted);font-size:11px;text-align:center;margin-top:20px}
+  .bar{height:7px;background:var(--line);border-radius:999px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--accent)}
 </style>
 </head>
 <body>
-  <div class="top">
-    <span class="logo" aria-label="Pigeon"><svg width="32" height="32" viewBox="0 0 1024 1024" role="img" aria-hidden="true"><defs><linearGradient id="lbd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fb4c6"/><stop offset="1" stop-color="#5f7488"/></linearGradient><linearGradient id="lwg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#cfe0ef"/><stop offset="1" stop-color="#7f94a8"/></linearGradient></defs><g transform="translate(512 500) rotate(-12)"><path d="M-40 -30 C -150 -210 -300 -250 -360 -210 C -250 -170 -180 -90 -70 -40 Z" fill="url(#lwg)" opacity="0.9"/><path d="M160 40 C 300 60 360 110 380 170 C 300 150 250 140 180 120 Z" fill="url(#lbd)"/><path d="M-70 -20 C -30 -90 90 -110 190 -70 C 250 -46 230 60 150 100 C 70 136 -40 120 -90 60 C -110 30 -100 10 -70 -20 Z" fill="url(#lbd)"/><circle cx="200" cy="-78" r="56" fill="url(#lbd)"/><path d="M250 -86 L 316 -74 L 250 -56 Z" fill="#ff8a1e"/><circle cx="214" cy="-90" r="11" fill="#0e1724"/><path d="M30 -10 C -40 160 -170 260 -300 270 C -210 160 -150 60 -40 20 Z" fill="url(#lwg)"/><line x1="60" y1="108" x2="60" y2="168" stroke="#ff8a1e" stroke-width="10" stroke-linecap="round"/><rect x="34" y="166" width="52" height="30" rx="8" fill="#ff8a1e" stroke="#0e1724" stroke-width="5"/></g></svg></span>
-    <div><h1>Pigeon</h1><p class="sub">Geographic location awareness</p></div>
-    <div class="theme" id="theme">
-      <button class="tbtn on" data-t="day">Day</button>
-      <button class="tbtn" data-t="night">Night</button>
-      <button class="tbtn" data-t="red">Red</button>
+<header>
+  <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0e151d"/><g fill="none" stroke="#66e0ff" stroke-width="3"><circle cx="32" cy="32" r="6"/><ellipse cx="32" cy="32" rx="22" ry="9"/><ellipse cx="32" cy="32" rx="22" ry="9" transform="rotate(60 32 32)"/><ellipse cx="32" cy="32" rx="22" ry="9" transform="rotate(120 32 32)"/></g></svg>
+  <div><h1>Einstein</h1><p class="sub">Weak-signal station log &amp; analysis — in tribute to Albert</p></div>
+  <div style="margin-left:auto" class="faceplate" id="faceplate">
+    <button data-face="day" title="Sunlight-readable">☀ Day</button>
+    <button data-face="dark" class="on" title="Standard">◐ Dark</button>
+    <button data-face="night" title="NVG-safe red">🌙 Night</button>
+  </div>
+</header>
+
+<div class="tabs" id="tabs">
+  <button data-tab="dash" class="on">Dashboard</button>
+  <button data-tab="new">New entry</button>
+  <button data-tab="log">Log</button>
+  <button data-tab="analyzer">Analyzer</button>
+  <button data-tab="recorder">Recorder</button>
+  <button data-tab="repeater">Repeater</button>
+  <button data-tab="import">Import</button>
+  <button data-tab="ssp">SSP</button>
+  <button data-tab="ai">AI</button>
+  <button data-tab="email">Email</button>
+  <button data-tab="tools">Tools</button>
+  <button data-tab="settings">Settings</button>
+</div>
+
+<div class="wrap">
+
+<!-- ===== DASHBOARD ===== -->
+<section id="t-dash">
+  <div class="card">
+    <h2>Station summary</h2>
+    <div class="grid3">
+      <div class="stat"><div class="k">Entries</div><div class="v" id="s-total">0</div></div>
+      <div class="stat"><div class="k">Best DX (km)</div><div class="v" id="s-dx">—</div></div>
+      <div class="stat"><div class="k">Bands</div><div class="v" id="s-bands">0</div></div>
+    </div>
+    <div class="grid3" style="margin-top:10px">
+      <div class="stat"><div class="k">Weakest SNR</div><div class="v" id="s-snr">—</div></div>
+      <div class="stat"><div class="k">Modes</div><div class="v" id="s-modes">0</div></div>
+      <div class="stat"><div class="k">Grids</div><div class="v" id="s-grids">0</div></div>
     </div>
   </div>
+  <div class="card">
+    <h2>By band</h2>
+    <div id="by-band"><p class="muted small">No entries yet.</p></div>
+  </div>
+  <div class="card">
+    <h2>By mode</h2>
+    <div id="by-mode"><p class="muted small">No entries yet.</p></div>
+  </div>
+  <div class="card">
+    <h2>Recent</h2>
+    <div class="scroll"><table id="recent"><tbody></tbody></table></div>
+  </div>
+</section>
 
-  <main>
-    <div id="gps-warn" class="warn" hidden>Waiting for a location fix… allow location access, and go outdoors for the first fix.</div>
+<!-- ===== NEW ENTRY ===== -->
+<section id="t-new" style="display:none">
+  <div class="card">
+    <h2>New log entry</h2>
+    <div class="grid2">
+      <div><label>Date/time (UTC)</label><input id="f-utc" type="text" placeholder="YYYY-MM-DD HH:MM:SS"></div>
+      <div><label>Band</label><select id="f-band"></select></div>
+    </div>
+    <div class="grid2">
+      <div><label>Mode</label><select id="f-mode"></select></div>
+      <div><label>Frequency (MHz)</label><input id="f-freq" type="text" placeholder="144.174"></div>
+    </div>
+    <div class="grid2">
+      <div><label>Callsign heard</label><input id="f-call" type="text" placeholder="K1ABC" autocapitalize="characters"></div>
+      <div><label>Grid (Maidenhead)</label><input id="f-grid" type="text" placeholder="FN42" autocapitalize="characters"></div>
+    </div>
+    <div class="grid3">
+      <div><label>SNR (dB)</label><input id="f-snr" type="text" placeholder="-21"></div>
+      <div><label>Freq drift (Hz)</label><input id="f-drift" type="text" placeholder="0.2"></div>
+      <div><label>Integration (s)</label><input id="f-integ" type="text" placeholder="120"></div>
+    </div>
+    <div class="row"><span class="pill" id="f-dxb">distance / bearing: —</span></div>
 
-    <section class="card">
-      <h2>Where you are</h2>
-      <div class="grid2">
-        <div class="stat"><div class="k">Latitude</div><div class="v" id="lat">—</div></div>
-        <div class="stat"><div class="k">Longitude</div><div class="v" id="lon">—</div></div>
-        <div class="stat"><div class="k">Grid square</div><div class="v" id="grid">—</div></div>
-        <div class="stat"><div class="k">Height (ASL)</div><div class="v" id="alt">—</div></div>
-        <div class="stat"><div class="k">Speed</div><div class="v" id="spd">—</div></div>
-        <div class="stat"><div class="k">Accuracy</div><div class="v" id="acc">—</div></div>
-      </div>
-      <p class="small muted" id="fix-src" style="margin:8px 0 0"></p>
-    </section>
+    <h2 style="margin-top:16px">Conditions (for propagation study)</h2>
+    <div class="grid3">
+      <div><label>Antenna heading (°)</label><input id="f-ant" type="text" placeholder="e.g. 45"></div>
+      <div><label>Wind (dir° / kt)</label><input id="f-wind" type="text" placeholder="NE / 12"></div>
+      <div><label>Barometric (hPa)</label><input id="f-baro" type="text" placeholder="1013"></div>
+    </div>
+    <div class="grid3">
+      <div><label>Rain (mm/h)</label><input id="f-rain" type="text" placeholder="0"></div>
+      <div><label>Humidity (%)</label><input id="f-hum" type="text" placeholder="78"></div>
+      <div><label>Air temp (°C)</label><input id="f-temp" type="text" placeholder="27"></div>
+    </div>
+    <div class="grid3">
+      <div><label>Sea surface temp (°C)</label><input id="f-sst" type="text" placeholder="28"></div>
+      <div><label>Measured freq offset (Hz)</label><input id="f-offset" type="text" placeholder="+1.2"></div>
+      <div style="align-self:end"><button class="btn sm" id="calc-prop" type="button" style="width:100%">Analyse propagation</button></div>
+    </div>
+    <div id="prop-out" class="stat" style="margin-top:10px;display:none"></div>
+    <label>Notes</label><textarea id="f-notes" placeholder="FEC, repeats, Q65 submode, EME window, troposcatter path…" style="font-family:var(--body);min-height:60px"></textarea>
+    <div class="row"><button class="btn go" id="save-entry">Save entry</button><button class="btn sm" id="now-btn">Set UTC now</button><span class="small muted" id="save-msg"></span></div>
+  </div>
+</section>
 
-    <section class="card">
-      <h2>Destination &amp; location</h2>
-      <label class="k" style="display:block;margin-bottom:6px">My location</label>
-      <div class="layers">
-        <button id="loc-gps" class="on" title="Exact GPS/GNSS fix. You navigate precisely and share your exact position.">📡 GPS</button>
-        <button id="loc-ip" title="Locate by internet (IP) address — approximate, and reflects your VPN exit when a VPN is on.">🌐 IP</button>
-        <button id="loc-mask" title="Navigate with exact GPS yourself, but share a position fuzzed to ~1 km so your exact spot is hidden from the other person.">🎭 Masked</button>
-      </div>
-      <label class="k" style="display:block;margin:10px 0 6px">Destination — country &amp; place / postal code</label>
-      <div class="row">
-        <select class="in" id="dest-country" style="flex:0 0 auto;max-width:54%"></select>
-        <input class="in" id="dest-zip" placeholder="Town, area, address or zip" autocomplete="off" spellcheck="false">
-      </div>
-      <div class="row">
-        <button class="btn go sm" id="set-dest">Set destination</button>
-        <button class="btn sm" id="pick">📍 Pick on map</button>
-        <button class="btn sm" id="clear-dest">Clear</button>
-      </div>
-      <div class="cinfo" style="margin-top:14px">
-        <div class="stat"><div class="k">Heading — azimuth the top of phone points</div><div class="v big" id="hdg">—</div></div>
-        <div class="stat" style="margin-top:8px"><div class="k">Distance to destination</div><div class="v big" id="distv">—</div></div>
-        <div class="stat" style="margin-top:8px"><div class="k">ETA at current speed</div><div class="v" id="eta">—</div></div>
-      </div>
-      <p class="small muted" style="margin:10px 0 0">Choose the country, type a <b>town, area, address or postal code</b>, and tap <b>Set destination</b> — or just <b>tap anywhere on the map</b> below to drop a pin. (Postal codes don't resolve everywhere — Barbados codes aren't in the free map data, so use a town/area or tap the map there.) Your own position comes from GPS, or tap <b>IP address</b>. Tap the screen once to enable the heading sensor.</p>
-    </section>
+<!-- ===== LOG ===== -->
+<section id="t-log" style="display:none">
+  <div class="card">
+    <h2>Log</h2>
+    <div class="row">
+      <select id="flt-band" style="width:auto"><option value="">All bands</option></select>
+      <select id="flt-mode" style="width:auto"><option value="">All modes</option></select>
+      <button class="btn sm" id="exp-adif">Export ADIF</button>
+      <button class="btn sm" id="exp-csv">Export CSV</button>
+      <button class="btn sm" id="clear-log">Clear all</button>
+    </div>
+    <div class="scroll" style="margin-top:12px"><table id="log-table"><thead><tr>
+      <th>UTC</th><th>Band</th><th>Mode</th><th>Call</th><th>Grid</th><th>km</th><th>Brg</th><th>SNR</th><th>Freq</th><th></th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
 
-    <section class="card">
-      <h2>Map</h2>
-      <div class="layers">
-        <button data-layer="street" class="on">Street</button>
-        <button data-layer="terrain">Terrain</button>
-        <button id="rf-toggle" title="Show licensed ham operators heard over RF (clear-text grid squares)">📻 Ham RF</button>
-      </div>
-      <div class="map-wrap"><div id="map"></div></div>
-    </section>
+<!-- ===== ANALYZER ===== -->
+<section id="t-analyzer" style="display:none">
+  <div class="card">
+    <h2>Signal analyzer — spectrum &amp; waterfall</h2>
+    <p class="small muted">Feed the rig's audio (USB codec / line-in / mic) into this device and watch the band in real time. Works on any band the radio is tuned to — the display is audio‑rate (0–6 kHz of the SSB passband).</p>
+    <div class="row"><button class="btn go sm" id="an-start">▶ Start</button><button class="btn sm" id="an-stop">⏹ Stop</button><span class="small muted" id="an-state" style="align-self:center">stopped</span></div>
+    <canvas id="an-spec" width="800" height="150" style="width:100%;height:110px;background:#060b10;border:1px solid var(--line);border-radius:10px;margin-top:10px"></canvas>
+    <canvas id="an-fall" width="800" height="240" style="width:100%;height:200px;background:#060b10;border:1px solid var(--line);border-radius:10px;margin-top:8px"></canvas>
+    <div class="grid3" style="margin-top:10px">
+      <div class="stat"><div class="k">Peak tone</div><div class="v" id="an-peak" style="font-size:18px">—</div></div>
+      <div class="stat"><div class="k">Peak level</div><div class="v" id="an-lvl" style="font-size:18px">—</div></div>
+      <div class="stat"><div class="k">Est. SNR</div><div class="v" id="an-snr" style="font-size:18px">—</div></div>
+    </div>
+  </div>
+</section>
 
-    <section class="card">
-      <h2>Nearby landmarks</h2>
-      <div id="landmarks"><p class="muted small">Finding places near you…</p></div>
-    </section>
+<!-- ===== RECORDER ===== -->
+<section id="t-recorder" style="display:none">
+  <div class="card">
+    <h2>Audio recorder</h2>
+    <p class="small muted">Record off-air audio (the rig's output) to a file for later decoding, QSL or analysis. Saved locally; drop a WAV/WebM into any decoder or back into Einstein's Import.</p>
+    <div class="row"><button class="btn go sm" id="rec-start">● Record</button><button class="btn sm" id="rec-stop">⏹ Stop</button><span class="small muted" id="rec-state" style="align-self:center">idle</span></div>
+    <div id="rec-list" style="margin-top:10px"></div>
+  </div>
+</section>
 
-    <section class="card" id="share-card">
-      <h2>Share my location — live &amp; encrypted</h2>
-      <p class="small muted">Make a private link and send it to one person; they just tap <strong>Accept</strong> to see you on the map. You choose whether to add a <strong>live video</strong> or <strong>audio</strong> feed, and you can turn them off or <strong>stop sharing</strong> whenever you want. Everything goes <strong>phone-to-phone</strong>, end-to-end <strong>AES-256</strong> encrypted — the relay only helps the two phones find each other and can't read anything.</p>
-      <div class="row" id="relay-row">
-        <input class="in" id="relay-url" placeholder="Relay URL  https://pigeon-relay.you.workers.dev" style="font-size:13px">
-        <button class="btn sm" id="relay-save">Save relay</button>
-      </div>
-      <div class="row"><label class="btn sm" for="share-photo">📷 Add my photo (optional)</label><input type="file" id="share-photo" accept="image/*" style="display:none"><span class="small muted" id="photo-state" style="align-self:center"></span></div>
-      <div class="row"><button class="btn sm" id="relay-only" aria-pressed="false" title="Force the P2P connection through the relay (TURN) so your real IP is never exposed to the other person — important behind a VPN. Needs a working TURN server.">🛡️ Hide my IP (relay-only)</button><span class="small muted" id="relayonly-state" style="align-self:center"></span></div>
-      <p class="small muted" style="margin:2px 0 0"><b>Privacy:</b> pick a <b>My location</b> mode above — <b>GPS</b> shares your exact spot, <b>IP</b> shares your network/VPN location, <b>Masked</b> lets you navigate exactly but shares a ~1 km-fuzzed position (hidden from the other person, area still known). <b>Hide my IP</b> keeps WebRTC from leaking your real IP.</p>
-      <details style="margin-top:8px">
-        <summary class="small" style="cursor:pointer;color:var(--accent2,#36c4ff)">⚙️ Advanced: TURN server &amp; phone settings</summary>
-        <div style="margin-top:8px">
-          <label class="k" style="display:block;margin-bottom:5px">TURN server — makes “Hide my IP” reliable</label>
-          <input class="in" id="turn-url" placeholder="turn:global.relay.metered.ca:443" style="font-size:13px">
-          <div class="row" style="margin-top:6px">
-            <input class="in" id="turn-user" placeholder="username" style="font-size:13px;flex:1;min-width:0">
-            <input class="in" id="turn-cred" placeholder="credential" style="font-size:13px;flex:1;min-width:0">
-          </div>
-          <div class="row"><button class="btn sm" id="turn-save">Save TURN</button><span class="small muted" id="turn-state" style="align-self:center"></span></div>
-          <p class="small muted" style="margin:6px 0 0">Relay-only needs a working TURN server. <b>metered.ca</b> (Open Relay) gives a <b>free tier (~50 GB/month)</b>: sign up at metered.ca → create an app → copy your <b>turn:</b> URL, username &amp; credential → paste them here. Without your own, the app falls back to a shared free TURN that can be slow or down.</p>
-          <label class="k" style="display:block;margin:10px 0 4px">Turn these on in your phone (the app can't)</label>
-          <ul class="small muted" style="margin:0;padding-left:18px;line-height:1.55">
-            <li><b>VPN:</b> connect your VPN app (e.g. NordVPN) — the app then follows that route.</li>
-            <li><b>Private DNS:</b> Android → <i>Settings → Network &amp; internet → Private DNS</i> → “Provider hostname” (e.g. <i>one.one.one.one</i> or <i>dns.nextdns.io</i>).</li>
-            <li><b>Location permission:</b> keep it allowed — GPS needs it; Masked still shares only a fuzzed point.</li>
-          </ul>
-        </div>
-      </details>
-      <div class="row">
-        <button class="btn go sm" id="share-loc">Share location</button>
-        <button class="btn sm" id="t-video" aria-pressed="false">📹 Video feed</button>
-        <button class="btn sm" id="t-audio" aria-pressed="false">🎙️ Audio feed</button>
-        <button class="btn sm" id="share-stop" hidden>⏹ Stop sharing</button>
-      </div>
-      <p class="small muted" id="feed-hint" style="margin-top:2px">Tap <b>Video feed</b> or <b>Audio feed</b> to include them — before or during a share. You can turn each off or stop sharing entirely at any time.</p>
-      <div id="self-feed" hidden style="margin-top:8px">
-        <video id="self-video" playsinline autoplay muted style="width:100%;max-height:200px;border-radius:12px;background:#000;display:none"></video>
-        <div id="self-mic" class="row" style="display:none;align-items:center;gap:8px;margin-top:6px">
-          <span style="font-size:18px">🎙️</span>
-          <div style="flex:1;height:8px;background:var(--line);border-radius:999px;overflow:hidden"><div id="mic-bar" style="height:100%;width:0;background:var(--accent);transition:width .08s"></div></div>
-          <span class="small muted">mic live</span>
-        </div>
-        <p class="small muted" id="self-feed-note" style="margin:4px 0 0">This preview is only on your phone — it confirms your feed is working. The other person sees it once connected.</p>
-      </div>
-      <div id="share-box" hidden>
-        <div class="stat" style="margin-top:10px"><div class="k">Your private link — send it to one person</div><div class="v" id="share-link" style="font-size:12px;overflow-wrap:anywhere"></div></div>
-        <div class="row"><button class="btn sm" id="share-copy">Copy link</button></div>
-        <div id="share-reqs" style="margin-top:8px"></div>
-        <video id="share-remote-video" playsinline autoplay style="width:100%;border-radius:12px;margin-top:10px;display:none;background:#000"></video>
-        <div id="share-remote-audio" class="row" style="display:none;align-items:center;gap:8px;margin-top:8px"><span style="font-size:18px">🔊</span><span class="small muted">Live audio from the other person</span></div>
-        <p class="small muted" id="share-state"></p>
-        <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">🔧 Connection diagnostics</summary><pre class="diag-log" style="white-space:pre-wrap;word-break:break-word;font:11px var(--mono);color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;max-height:180px;overflow:auto"></pre></details>
-      </div>
-      <div id="view-box" hidden>
-        <p class="big" id="view-title">Viewing a shared location</p>
-        <div class="stat"><div class="k">Their position</div><div class="v" id="view-pos">connecting…</div></div>
-        <div class="stat" style="margin-top:8px"><div class="k">Bearing &amp; distance to them</div><div class="v" id="view-brg">—</div></div>
-        <video id="view-video" playsinline autoplay muted style="width:100%;border-radius:12px;margin-top:10px;display:none;background:#000"></video>
-        <div id="view-audio" class="row" style="display:none;align-items:center;gap:8px;margin-top:8px"><span style="font-size:18px">🔊</span><span class="small muted">Live audio from the sharer</span></div>
-        <p class="small" id="view-feedback" style="margin-top:8px;color:var(--accent2,#36c4ff)"></p>
-        <p class="small muted" id="view-state"></p>
-        <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">🔧 Connection diagnostics</summary><pre class="diag-log" style="white-space:pre-wrap;word-break:break-word;font:11px var(--mono);color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;max-height:180px;overflow:auto"></pre></details>
-      </div>
-    </section>
+<!-- ===== REPEATER ===== -->
+<section id="t-repeater" style="display:none">
+  <div class="card">
+    <h2>Crossband repeater controller</h2>
+    <p class="small muted">Monitors receive audio and signals when to key the TX radio — the brains of a VHF↔HF or 2 m↔70 cm crossband repeater. Set the VOX threshold and hang time; Einstein shows RX/TX state and logs activity.</p>
+    <div class="grid2">
+      <div><label>VOX threshold (0–100)</label><input id="rp-thr" type="range" min="1" max="100" value="18"></div>
+      <div><label>Hang time (s)</label><input id="rp-hang" type="text" value="1.5"></div>
+    </div>
+    <div class="row"><button class="btn go sm" id="rp-start">▶ Start monitor</button><button class="btn sm" id="rp-stop">⏹ Stop</button></div>
+    <div class="grid3" style="margin-top:10px">
+      <div class="stat"><div class="k">RX level</div><div class="v" id="rp-lvl" style="font-size:18px">—</div></div>
+      <div class="stat"><div class="k">State</div><div class="v" id="rp-state" style="font-size:18px">idle</div></div>
+      <div class="stat"><div class="k">Keyings</div><div class="v" id="rp-count" style="font-size:18px">0</div></div>
+    </div>
+    <p class="note"><b>Hardware:</b> a real crossband repeat needs two radios (or a dual‑band rig with crossband) and a PTT line. This panel is the controller + monitor; actual keying is driven by the desktop helper over <b>Hamlib (rigctld)</b> PTT or a CAT/serial keyer — configure <code>rigctld</code> in Settings. Transmit only where licensed; a crossband repeater may need a repeater/automatic‑station authorisation.</p>
+  </div>
+</section>
 
-    <section class="card" id="door-card">
-      <h2>Pigeon keys — direct calls (the Door) <span class="st-help" tabindex="0" data-help="Swap a one-time Pigeon Code with someone (by WhatsApp/text — no call is happening, so leaving the app is fine). After that, call directly with no link to send, so the handshake never breaks.">?</span></h2>
-      <p class="small muted">Trade a one-time <b>Pigeon Code</b> (a scrambled 256-bit key + private room) with someone <b>ahead of time</b>. Once you've each added the other's code, call straight from here — <b>no link to send at call time</b>, so the connection can't be broken by leaving the app.</p>
-      <div class="st-tabs">
-        <button class="st-chip on" data-doortab="contacts">Contacts</button>
-        <button class="st-chip" data-doortab="create">Create a code</button>
-        <button class="st-chip" data-doortab="add">Add a code</button>
-      </div>
+<!-- ===== IMPORT ===== -->
+<section id="t-import" style="display:none">
+  <div class="card">
+    <h2>Import WSJT-X decodes</h2>
+    <p class="small muted">Paste decode lines from WSJT-X (the Band Activity pane, or lines from <b>ALL.txt</b>). Einstein parses mode, SNR, dT, frequency and the callsign/grid from the message, and adds them to your log — a cross-platform way to capture real FT8/FT4/Q65/MSK144/WSPR decodes without extra software.</p>
+    <label>Band for these decodes</label><select id="imp-band"></select>
+    <label>Paste decodes</label>
+    <textarea id="imp-text" placeholder="140000  -15  0.2  1575 ~  CQ K1ABC FN42&#10;000000_120000   144.174 Rx FT8    -21  0.1  809 CQ VP8ABC IO91"></textarea>
+    <div class="row"><button class="btn go" id="imp-run">Parse &amp; add</button><span class="small muted" id="imp-msg"></span></div>
+    <p class="note">Live capture over WSJT-X's UDP broadcast, rigctld (Hamlib) CAT control, and PSK Reporter spotting need raw network sockets — those run in the <b>desktop (Windows/Linux)</b> build's helper and are the next phase; the log, analysis and import here work on every platform.</p>
+  </div>
+</section>
 
-      <div id="door-contacts" style="margin-top:8px">
-        <div class="row"><button class="btn sm" id="avail-toggle" aria-pressed="false" title="Listen for incoming calls from your contacts">🟢 Available for calls</button><span class="small muted" id="avail-state" style="align-self:center">Off</span></div>
-        <div id="contact-list" style="margin-top:8px"></div>
-        <div id="incoming" hidden style="margin-top:8px"></div>
-      </div>
+<!-- ===== TOOLS ===== -->
+<section id="t-tools" style="display:none">
+  <div class="card">
+    <h2>MMSI decoder (ITU-R M.585)</h2>
+    <label>MMSI (9 digits)</label>
+    <div class="row"><input id="mmsi-in" type="text" placeholder="314123456" style="flex:1;min-width:0"><button class="btn go sm" id="mmsi-go">Decode</button></div>
+    <div id="mmsi-out" class="stat" style="margin-top:10px;display:none"></div>
+  </div>
+  <div class="card">
+    <h2>Selcall tone systems</h2>
+    <p class="small muted">Two-tone-sequential / dual-tone selective calling used by HF/VHF data terminals (Codan, Barrett, marine) and aviation. Reference tone tables (Hz).</p>
+    <div class="scroll"><table id="selcall-tbl"></table></div>
+    <p class="note">A <b>repeat</b> tone is sent when two adjacent digits are equal. Encode/decode is implemented in <code>rf/selcall.py</code>.</p>
+  </div>
+  <div class="card">
+    <h2>International ALE channels (HFLINK HFN, USB kHz)</h2>
+    <p class="small muted">De-facto international amateur ALE calling channels. Region-dependent — verify your band plan and licence.</p>
+    <div class="scroll"><table id="ale-tbl"></table></div>
+  </div>
+</section>
 
-      <div id="door-create" style="display:none;margin-top:8px">
-        <label>Name this contact (who you're giving it to)</label>
-        <input class="in" id="create-name" placeholder="e.g. Bob">
-        <div class="row"><button class="btn go sm" id="create-code">Generate Pigeon Code</button></div>
-        <div id="create-out" style="margin-top:8px"></div>
-      </div>
+<!-- ===== SSP — SEA SCATTER PROPAGATION ===== -->
+<section id="t-ssp" style="display:none">
+  <div class="card">
+    <h2>SSP — Sea Scatter Propagation analysis (2 m / 70 cm)</h2>
+    <p class="small muted">AI-assisted over-water VHF/UHF path analysis. Aggregates the marine-weather
+      variables that drive ducting and sea scatter along the great-circle path between two grid squares,
+      and predicts a workable-path likelihood by distance band. <b>Honest by design:</b> 2 m/70 cm do not
+      propagate thousands of miles by these mechanisms — long bands are capped at the documented physical
+      ceiling and reported near zero.</p>
+    <div class="grid2">
+      <div><label>From grid</label><input id="ssp-a" type="text" placeholder="FK52" autocapitalize="characters"></div>
+      <div><label>To grid</label><input id="ssp-b" type="text" placeholder="GK03" autocapitalize="characters"></div>
+    </div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px">
+      <div style="flex:1;min-width:120px"><label>Band</label>
+        <select id="ssp-freq"><option value="144.3">2 m (144 MHz)</option><option value="432">70 cm (432 MHz)</option></select></div>
+      <div style="flex:1;min-width:120px"><label>Target distance</label>
+        <select id="ssp-band"><option value="auto">Auto (from grids)</option><option value="1609">≤1000 mi</option><option value="4828">≤3000 mi</option><option value="9656">≤6000 mi</option><option value="20000">&gt;6000 mi</option></select></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn go sm" id="ssp-run">Run analysis</button>
+      <span class="small muted" id="ssp-status"></span></div>
+  </div>
+  <div class="card" id="ssp-wxcard" style="display:none">
+    <h2>Marine weather along path</h2>
+    <p class="small muted">Fetched live per waypoint (Open-Meteo marine, no key). If offline, enter a representative set and it will be applied to the whole path.</p>
+    <div class="grid2">
+      <div><label>SST (°C)</label><input id="wx-sst" type="number" value="28"></div>
+      <div><label>Air temp (°C)</label><input id="wx-ta" type="number" value="30"></div>
+      <div><label>Humidity (%)</label><input id="wx-rh" type="number" value="78"></div>
+      <div><label>Pressure (hPa)</label><input id="wx-p" type="number" value="1016"></div>
+      <div><label>Wind (m/s)</label><input id="wx-u" type="number" value="5"></div>
+    </div>
+    <p class="note" id="ssp-wxnote"></p>
+  </div>
+  <div class="card" id="ssp-rescard" style="display:none">
+    <h2>Result</h2>
+    <div id="ssp-res" class="stat"></div>
+    <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
+      <label style="flex:0">Send to</label>
+      <input id="ssp-email" type="email" placeholder="email (optional)" style="flex:1;min-width:120px">
+      <input id="ssp-wa" type="text" placeholder="WhatsApp number (optional)" style="flex:1;min-width:120px">
+    </div>
+    <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+      <button class="btn sm" id="ssp-popup">Pop-up</button>
+      <button class="btn sm" id="ssp-mail">Email</button>
+      <button class="btn sm" id="ssp-whats">WhatsApp</button>
+    </div>
+  </div>
+</section>
 
-      <div id="door-add" style="display:none;margin-top:8px">
-        <label>Paste the Pigeon Code you were sent</label>
-        <input class="in" id="add-code" placeholder="Pigeon Code…" style="font-size:12px">
-        <label>Name this contact</label>
-        <input class="in" id="add-name" placeholder="e.g. Alice">
-        <div class="row"><button class="btn go sm" id="add-save">Add contact</button><span class="small muted" id="add-state" style="align-self:center"></span></div>
-      </div>
+<!-- ===== AI / COGNITIVE ENGINE ===== -->
+<section id="t-ai" style="display:none">
+  <div class="card">
+    <h2>Cognitive engine — AI-driven link &amp; propagation</h2>
+    <p class="small muted">Einstein senses its operational theatre from the stations and sounding beacons it hears,
+      then decides — with reasons you can read: it classifies each path (F2 / Es / Tropo-duct / <b>TEP</b> / tropo-scatter /
+      meteor / ground-wave), maps which directions are open, and throttles the modem FEC/speed up or down (with redundancy
+      failover) to hold a link. Explainable, not a black box.</p>
+    <p class="note" id="ai-gridnote"></p>
+  </div>
+  <div class="card">
+    <h2>Heard stations (capture)</h2>
+    <div class="grid2">
+      <div><label>Callsign</label><input id="hs-call" type="text" placeholder="LU5DX" autocapitalize="characters"></div>
+      <div><label>Grid</label><input id="hs-grid" type="text" placeholder="GF05" autocapitalize="characters"></div>
+      <div><label>Freq (MHz)</label><input id="hs-freq" type="number" value="50.313" step="0.001"></div>
+      <div><label>SNR (dB)</label><input id="hs-snr" type="number" value="-5"></div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <label style="flex:0"><input type="checkbox" id="hs-beacon"> heard as beacon</label>
+      <button class="btn go sm" id="hs-add">Capture</button>
+      <button class="btn sm" id="hs-demo">Load example spots</button>
+      <button class="btn sm" id="hs-clear">Clear</button>
+    </div>
+    <div class="scroll" style="margin-top:8px"><table id="hs-tbl"></table></div>
+  </div>
+  <div class="card" id="ai-anacard" style="display:none">
+    <h2>Propagation analysis</h2>
+    <div id="ai-dir" class="stat"></div>
+  </div>
+  <div class="card">
+    <h2>Link adaptation &amp; redundancy</h2>
+    <div class="row"><label style="flex:0">Measured SNR (dB)</label><input id="ai-snr" type="number" value="12" style="width:90px">
+      <select id="ai-band" style="flex:0"><option>HF</option><option>6m</option><option selected>2m</option><option>70cm</option></select>
+      <button class="btn go sm" id="ai-adapt">Decide</button></div>
+    <div id="ai-link" class="stat" style="margin-top:8px;display:none"></div>
+  </div>
+  <div class="card">
+    <h2>Einstein Beacon — hail &amp; chat</h2>
+    <p class="small muted">Hail other stations with a named Einstein Beacon (callsign + grid + capabilities), as a CQ or to a
+      specific call, on VHF/HF digital frequencies. On contact, the two radios negotiate the fastest modem both support that
+      the SNR allows, then open a live clear-text chat.</p>
+    <div class="grid2">
+      <div><label>Target (callsign or CQ)</label><input id="bc-tgt" type="text" value="CQ" autocapitalize="characters"></div>
+      <div><label>Freq (MHz)</label><input id="bc-freq" type="number" value="144.300" step="0.001"></div>
+    </div>
+    <div class="row" style="margin-top:6px"><button class="btn go sm" id="bc-build">Build hail beacon</button>
+      <button class="btn sm" id="bc-copy">Copy TX command</button></div>
+    <div id="bc-out" class="stat" style="margin-top:8px;display:none"></div>
+  </div>
+</section>
 
-      <div id="call-box" hidden style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
-        <p class="big" id="call-title" style="font-size:18px">Call</p>
-        <video id="call-remote-video" playsinline autoplay style="width:100%;border-radius:12px;background:#000;display:none"></video>
-        <div id="call-remote-audio" class="row" style="display:none;align-items:center;gap:8px;margin-top:6px"><span style="font-size:18px">🔊</span><span class="small muted">Live audio</span></div>
-        <video id="call-self-video" playsinline autoplay muted style="width:38%;border-radius:8px;margin-top:6px;display:none"></video>
-        <p class="small" id="call-state" style="color:var(--accent2,#36c4ff)"></p>
-        <div class="row">
-          <button class="btn sm" id="call-video" aria-pressed="false">📹 Video</button>
-          <button class="btn sm" id="call-audio" aria-pressed="false">🎙️ Audio</button>
-          <button class="btn sm" id="call-hangup">⏹ Hang up</button>
-        </div>
-        <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">🔧 Connection diagnostics</summary><pre class="diag-log" style="white-space:pre-wrap;word-break:break-word;font:11px var(--mono);color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;max-height:160px;overflow:auto"></pre></details>
-      </div>
-    </section>
+<!-- ===== EMAIL / MODEM ===== -->
+<section id="t-email" style="display:none">
+  <div class="card">
+    <h2>Einstein Email &amp; Modem</h2>
+    <p class="small muted">Clear-text RF email / messaging over an SSB rig, carried by the built-in
+      <b>Einstein Modem</b> (adaptive OFDM). Compose here; the waveform is generated and decoded by the
+      <code>rf/</code> tools (<code>einstein_modem.py</code> + <code>einstein_email.py</code>) on the SDR/soundcard host.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <label style="flex:0">Tier</label>
+      <select id="em-tier" style="flex:1;min-width:140px">
+        <option value="STANDARD">Standard (free · limited)</option>
+        <option value="PRO">Einstein Pro — HF (~2.7 kbps)</option>
+        <option value="PRO_VHF">Einstein Pro — VHF/FM wideband (~9 kbps)</option>
+      </select>
+    </div>
+    <div id="em-tierinfo" class="stat" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h2>Compose message</h2>
+    <div class="grid2">
+      <div><label>To (callsign)</label><input id="em-to" type="text" placeholder="KV4FZ" autocapitalize="characters"></div>
+      <div><label>From (callsign)</label><input id="em-from" type="text" placeholder="8P6NH" autocapitalize="characters"></div>
+    </div>
+    <label>Subject</label><input id="em-subj" type="text" placeholder="Field report">
+    <label>Message (clear text only — no encryption on RF)</label>
+    <textarea id="em-body" rows="4" placeholder="All stations: Einstein Email over HF is operational. 73."></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn go sm" id="em-build">Prepare for transmit</button>
+      <button class="btn sm" id="em-copy">Copy TX command</button></div>
+    <div id="em-out" class="stat" style="margin-top:10px;display:none"></div>
+  </div>
+  <div class="card">
+    <h2>How it sends</h2>
+    <p class="small muted">Einstein Email compresses (zlib, reversible — not a cipher), splits the message into
+      CRC-protected blocks, and runs a selective <b>ARQ</b>: the receiver asks only for the blocks that failed, so
+      traffic gets through fading that would wipe a single pass. Pro lifts the airtime governor and uses 16-QAM over
+      ~2.4&nbsp;kHz for ~5× the throughput of Standard.</p>
+    <p class="note">Full spec, measured FER/throughput and the recommended innovations: <code>rf/MODEM.md</code>.</p>
+  </div>
+</section>
 
-    <section class="card" id="stealth-card">
-      <h2>Stealth message <span class="st-help" tabindex="0" data-help="PLUMAGE: encrypt a message and scatter it across innocent media. The reader needs every carrier + the pass-phrase.">?</span></h2>
-      <p class="small muted">Encrypt a message and hide the pieces inside ordinary-looking files (a picture, a tone, a note). Send all the files any way you like — only someone with them all <strong>and</strong> the pass-phrase can read it. On-device, AES-256.</p>
-      <div class="st-tabs">
-        <button class="btn sm on" data-sttab="hide">Hide</button>
-        <button class="btn sm" data-sttab="reveal">Reveal</button>
-      </div>
-      <div id="st-hide" style="margin-top:10px">
-        <textarea class="in" id="st-msg" placeholder="Message to hide…" style="min-height:70px"></textarea>
-        <input class="in" id="st-pass" type="password" placeholder="Pass-phrase (shared separately)" autocomplete="off" style="margin-top:8px">
-        <div class="layers" style="margin-top:8px">
-          <button class="st-chip on" data-type="image" title="Hide a shard in a picture">🖼️ Picture</button>
-          <button class="st-chip on" data-type="audio" title="Hide a shard in an audio clip">🎵 Audio</button>
-          <button class="st-chip on" data-type="text" title="Hide a shard in text (invisible characters)">📝 Text</button>
-        </div>
-        <div class="row"><button class="btn go sm" id="st-scatter">🪶 Scatter</button></div>
-        <div id="st-out"></div>
-      </div>
-      <div id="st-reveal" style="display:none;margin-top:10px">
-        <input type="file" id="st-files" multiple class="in">
-        <input class="in" id="st-rpass" type="password" placeholder="Pass-phrase" autocomplete="off" style="margin-top:8px">
-        <div class="row"><button class="btn go sm" id="st-reveal-btn">🔓 Reveal</button></div>
-        <div id="st-rout"></div>
-      </div>
-    </section>
+<!-- ===== SETTINGS ===== -->
+<section id="t-settings" style="display:none">
+  <div class="card">
+    <h2>Station setup <span style="font-weight:400;font-size:12px;color:#ea5455" id="setup-req"></span></h2>
+    <p class="small muted">Grid square is <b>required</b> — Einstein's propagation, SSP and cognitive engine all work from it. The computer IP is auto-detected for the desktop link and modem networking (edit if wrong).</p>
+    <div class="grid2">
+      <div><label>My callsign</label><input id="my-call" type="text" placeholder="8P6NH" autocapitalize="characters"></div>
+      <div><label>My grid (Maidenhead) *</label><input id="my-grid" type="text" placeholder="GK03ec" autocapitalize="characters"></div>
+      <div><label>This computer's IP</label><input id="my-ip" type="text" placeholder="detecting…"></div>
+      <div><label>Einstein modem port</label><input id="my-port" type="text" placeholder="8773"></div>
+    </div>
+    <div class="row"><button class="btn go sm" id="save-settings">Save setup</button>
+      <button class="btn sm" id="ip-detect">Re-detect IP</button>
+      <span class="small muted" id="set-msg"></span></div>
+    <p class="note">Everything is stored on this device only. A valid grid unlocks the SSP and AI tabs.</p>
+  </div>
+  <div class="card">
+    <h2>Radio / CAT <span style="font-weight:400;font-size:12px;color:#8aa">— desktop station engine</span></h2>
+    <p class="small muted">Pick your radio and Einstein auto-fills the CAT/PTT settings — CI-V address, CAT baud, PTT method and rigctld — the same tested values as Tradewind. These drive the native station engine (<code>rf/einstein_station.py</code>) for keying, tuning and the modems on the Windows/Linux/Pi build.</p>
+    <div class="grid2">
+      <div><label>Radio / interface</label><select id="set-radio"></select></div>
+      <div><label>Recommended Einstein modem</label><input id="set-radiomodem" type="text" placeholder="OFDM-PRO" readonly></div>
+      <div><label>PTT method</label><input id="set-ptt" type="text" placeholder="VOX / RTS / CIV / YAESU_CAT"></div>
+      <div><label>CAT / PTT serial port</label><input id="set-catport" type="text" placeholder="COM5 or /dev/ttyUSB0"></div>
+      <div><label>CI-V address (Icom)</label><input id="set-civ" type="text" placeholder="7C"></div>
+      <div><label>CAT baud</label><input id="set-catbaud" type="text" placeholder="9600"></div>
+      <div><label>Audio device (rig in/out)</label><input id="set-audio" type="text" placeholder="USB Audio CODEC"></div>
+      <div><label>rigctld host:port (Hamlib)</label><input id="set-rigctld" type="text" placeholder="127.0.0.1:4532"></div>
+      <div><label>WSJT-X UDP port</label><input id="set-wsjt" type="text" placeholder="2237"></div>
+      <div><label>Rig reference drift (Hz) — GPSDO/OCXO offset</label><input id="set-rigdrift" type="text" placeholder="0.0"></div>
+    </div>
+    <p class="note" id="radio-note"></p>
+    <p class="note">The drift classifier subtracts your reference drift from the measured offset before testing for the sea Bragg Doppler — so a disciplined reference lets Einstein tell <b>sea Doppler from rig drift</b>.</p>
+    <p class="note"><b>Audio for analysis works now, in-app:</b> the <b>Analyzer</b> and <b>Recorder</b> tabs use your browser's audio input (getUserMedia) — feed the rig's USB-codec / line-in into the computer and watch the band live on any platform. <b>Native soundcard TX/PTT/CAT</b> (the previously-missing pipe) runs on the desktop build via these saved settings: <code>python3 rf/einstein_station.py --radio &lt;id&gt; --info</code> to check wiring, <code>--analyze 3</code> to pipe rig audio straight into SSP/drift analysis, <code>--tune</code>, <code>--tx-test</code>, <code>--rx</code> for on-air use.</p>
+  </div>
+  <div class="card">
+    <h2>About</h2>
+    <p class="small muted">Einstein is a weak-signal station companion: an honest logging and analysis tool that works alongside WSJT-X and Hamlib rather than re-implementing their decoders. Modes you log include WSPR, FT8, FT4, MSK144, Q65, FST4W, JT65, 2 m / 70 cm EME, meteor scatter and troposcatter. Data stays on your device; export ADIF for your main logbook.</p>
+  </div>
+</section>
 
-    <p class="foot">Pigeon reads your phone's own GNSS fix (GPS + GLONASS + Galileo + BeiDou, chosen by the phone) and sensors. It only reads — it sends nothing anywhere. Not a substitute for official navigation.</p>
-  </main>
+</div>
+<footer>Einstein · on-device · ADIF/CSV export · v1</footer>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* PLUMAGE Stealth engine (browser) — encrypt-then-scatter steganography.
-   Encrypts a message (AES-256-GCM, PBKDF2 key from a passphrase), splits the
-   ciphertext into shards, and hides each shard inside a cover carrier:
-     image  -> least-significant-bit of RGB (PNG, lossless, invisible)
-     audio  -> LSB of 16-bit PCM WAV samples
-     text   -> zero-width characters between words
-     video  -> appended trailer after the file's end (players ignore it)
-   Rebuilds only from ALL carriers + the passphrase. Clear, self-contained. */
-(function(){
-  const MAGIC = new Uint8Array([0x50,0x4C,0x4D,0x31]); // "PLM1"
-  const enc = new TextEncoder(), dec = new TextDecoder();
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const BANDS=["6m (50 MHz)","2m (144 MHz)","1.25m (222 MHz)","70cm (432 MHz)","33cm (902 MHz)","23cm (1296 MHz)","HF"];
+const BANDHZ={"6m (50 MHz)":"50","2m (144 MHz)":"144","1.25m (222 MHz)":"222","70cm (432 MHz)":"432","33cm (902 MHz)":"902","23cm (1296 MHz)":"1296","HF":"14"};
+const MODES=["FT8","FT4","WSPR","FST4W","MSK144","Q65","JT65","EME (2m)","EME (70cm)","Meteor scatter","Troposcatter","Ocean scatter (exp)","SSP — Sea Scatter (exp)","SSB","CW","Other"];
+const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const LS={ get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}} };
 
-  // ---- crypto ----
-  async function deriveKey(pass, salt){
-    const base = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
-    return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:200000, hash:'SHA-256'},
-      base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
-  }
-  async function encryptMsg(bytes, pass){
-    const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
-    const key=await deriveKey(pass, salt);
-    const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv}, key, bytes));
-    const out=new Uint8Array(16+12+ct.length); out.set(salt); out.set(iv,16); out.set(ct,28); return out;
-  }
-  async function decryptMsg(blob, pass){
-    const salt=blob.slice(0,16), iv=blob.slice(16,28), ct=blob.slice(28);
-    const key=await deriveKey(pass, salt);
-    return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv}, key, ct));
-  }
+// ---------- Maidenhead grid -> lat/lon, distance, bearing ----------
+function gridToLatLon(g){ g=(g||'').trim().toUpperCase(); if(g.length<4) return null;
+  const A='A'.charCodeAt(0);
+  let lon=(g.charCodeAt(0)-A)*20-180, lat=(g.charCodeAt(1)-A)*10-90;
+  lon+=parseInt(g[2])*2; lat+=parseInt(g[3])*1;
+  if(g.length>=6){ lon+=(g.charCodeAt(4)-A)*(2/24)+(1/24); lat+=(g.charCodeAt(5)-A)*(1/24)+(0.5/24); }
+  else { lon+=1; lat+=0.5; }
+  return {lat,lon}; }
+function haversine(a,b){ const R=6371,r=Math.PI/180;
+  const dLat=(b.lat-a.lat)*r,dLon=(b.lon-a.lon)*r;
+  const s=Math.sin(dLat/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s)); }
+function bearing(a,b){ const r=Math.PI/180;
+  const y=Math.sin((b.lon-a.lon)*r)*Math.cos(b.lat*r);
+  const x=Math.cos(a.lat*r)*Math.sin(b.lat*r)-Math.sin(a.lat*r)*Math.cos(b.lat*r)*Math.cos((b.lon-a.lon)*r);
+  return (Math.atan2(y,x)/r+360)%360; }
+function compass(b){ return ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(b/22.5)%16]; }
+function dxOf(grid){ const mg=gridToLatLon($('#my-grid').value||LS.get('e-mygrid','')); const tg=gridToLatLon(grid);
+  if(!mg||!tg) return null; return {km:Math.round(haversine(mg,tg)), brg:Math.round(bearing(mg,tg))}; }
 
-  // ---- shards ----
-  async function msgid(blob){ const h=new Uint8Array(await crypto.subtle.digest('SHA-256', blob)); return h.slice(0,4); }
-  function u32(n){ return new Uint8Array([(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]); }
-  function rd32(a,o){ return (a[o]<<24)|(a[o+1]<<16)|(a[o+2]<<8)|a[o+3]; }
-  async function split(blob, n){
-    const mid=await msgid(blob), L=blob.length, step=Math.ceil(L/n), out=[];
-    for(let i=0;i<n;i++){ const chunk=blob.slice(i*step,(i+1)*step);
-      const hdr=new Uint8Array(18); hdr.set(MAGIC); hdr.set(mid,4); hdr[8]=i; hdr[9]=n;
-      hdr.set(u32(chunk.length),10); hdr.set(u32(L),14);
-      const s=new Uint8Array(18+chunk.length); s.set(hdr); s.set(chunk,18); out.push(s); }
-    return out;
-  }
-  function reassemble(shards){
-    let mid=null,total=null; const parts={};
-    for(const s of shards){ if(!(s[0]==0x50&&s[1]==0x4C&&s[2]==0x4D&&s[3]==0x31)) continue;
-      const m=s.slice(4,8), idx=s[8], tot=s[9], slen=rd32(s,10);
-      if(mid===null){mid=m; total=tot;} parts[idx]=s.slice(18,18+slen); }
-    if(total===null || Object.keys(parts).length!==total) throw new Error('Need all '+total+' carriers.');
-    let len=0; for(let i=0;i<total;i++) len+=parts[i].length;
-    const out=new Uint8Array(len); let o=0; for(let i=0;i<total;i++){ out.set(parts[i],o); o+=parts[i].length; }
-    return out;
-  }
-
-  // ---- bit helpers ----
-  function toBits(bytes){ const b=new Uint8Array(bytes.length*8); for(let i=0;i<bytes.length;i++) for(let j=0;j<8;j++) b[i*8+j]=(bytes[i]>>(7-j))&1; return b; }
-  function fromBits(bits){ const n=bits.length>>3, out=new Uint8Array(n); for(let i=0;i<n;i++){ let v=0; for(let j=0;j<8;j++) v=(v<<1)|bits[i*8+j]; out[i]=v; } return out; }
-  function framed(payload){ const f=new Uint8Array(4+payload.length); f.set(u32(payload.length)); f.set(payload,4); return f; }
-
-  // ---- image carrier (canvas LSB) ----
-  function loadImage(src){ return new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
-  async function hideImage(payload, coverURL){
-    const im=await loadImage(coverURL); const c=document.createElement('canvas'); c.width=im.naturalWidth||im.width; c.height=im.naturalHeight||im.height;
-    const ctx=c.getContext('2d'); ctx.drawImage(im,0,0); const id=ctx.getImageData(0,0,c.width,c.height); const px=id.data;
-    const bits=toBits(framed(payload)); const cap=c.width*c.height*3;
-    if(bits.length>cap) throw new Error('Picture carrier too small for this message.');
-    let bi=0; for(let p=0; p<px.length && bi<bits.length; p+=4){ for(let ch=0;ch<3 && bi<bits.length;ch++){ px[p+ch]=(px[p+ch]&0xFE)|bits[bi++]; } px[p+3]=255; }
-    ctx.putImageData(id,0,0); return await new Promise(r=>c.toBlob(r,'image/png'));
-  }
-  async function seekImage(fileOrURL){
-    const url = (fileOrURL instanceof Blob)?URL.createObjectURL(fileOrURL):fileOrURL;
-    const im=await loadImage(url); const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
-    const ctx=c.getContext('2d'); ctx.drawImage(im,0,0); const px=ctx.getImageData(0,0,c.width,c.height).data;
-    const grab=(count)=>{ const bits=new Uint8Array(count); let bi=0; for(let p=0;p<px.length && bi<count;p+=4){ for(let ch=0;ch<3 && bi<count;ch++) bits[bi++]=px[p+ch]&1; } return bits; };
-    const L=rd32(fromBits(grab(32)),0); return fromBits(grab(32+L*8)).slice(4);
-  }
-
-  // ---- text carrier (zero-width) ----
-  const ZW0='​', ZW1='‌';
-  function hideText(payload, coverText){ const bits=toBits(framed(payload)); let z=''; for(const b of bits) z+= b?ZW1:ZW0;
-    const sp=coverText.indexOf(' '); return sp>=0 ? coverText.slice(0,sp+1)+z+coverText.slice(sp+1) : coverText+z; }
-  function seekText(s){ const zs=[]; for(const ch of s){ if(ch===ZW0)zs.push(0); else if(ch===ZW1)zs.push(1); }
-    const bits=Uint8Array.from(zs); const L=rd32(fromBits(bits.slice(0,32)),0); return fromBits(bits.slice(32,32+L*8)); }
-
-  // ---- audio carrier (WAV 16-bit PCM LSB) ----
-  function parseWav(buf){ const dv=new DataView(buf); let o=12; let dataOff=-1,dataLen=0;
-    while(o<buf.byteLength){ const id=String.fromCharCode(dv.getUint8(o),dv.getUint8(o+1),dv.getUint8(o+2),dv.getUint8(o+3)); const sz=dv.getUint32(o+4,true);
-      if(id==='data'){ dataOff=o+8; dataLen=sz; break; } o+=8+sz+(sz&1); } return {dataOff,dataLen}; }
-  async function hideAudio(payload, coverURL){
-    const buf=await (await fetch(coverURL)).arrayBuffer(); const {dataOff,dataLen}=parseWav(buf);
-    if(dataOff<0) throw new Error('Audio cover must be a 16-bit PCM WAV.');
-    const out=buf.slice(0); const s16=new Int16Array(out, dataOff, dataLen>>1);
-    const bits=toBits(framed(payload)); if(bits.length>s16.length) throw new Error('Audio carrier too small.');
-    for(let i=0;i<bits.length;i++) s16[i]=(s16[i]&~1)|bits[i]; return new Blob([out],{type:'audio/wav'});
-  }
-  async function seekAudio(fileOrURL){
-    const buf = (fileOrURL instanceof Blob)? await fileOrURL.arrayBuffer() : await (await fetch(fileOrURL)).arrayBuffer();
-    const {dataOff}=parseWav(buf); const s16=new Int16Array(buf, dataOff, (buf.byteLength-dataOff)>>1);
-    const grab=(n)=>{ const b=new Uint8Array(n); for(let i=0;i<n;i++) b[i]=s16[i]&1; return b; };
-    const L=rd32(fromBits(grab(32)),0); return fromBits(grab(32+L*8)).slice(4);
-  }
-
-  // ---- video/binary carrier: [cover][shard][len u32][FOOTER] read from the fixed end ----
-  const FOOT = new Uint8Array([0x50,0x4C,0x4D,0x7E]); // "PLM~" — distinct from the shard MAGIC
-  async function hideVideo(payload, coverURL){
-    const buf=new Uint8Array(await (await fetch(coverURL)).arrayBuffer());
-    const out=new Uint8Array(buf.length+payload.length+8); out.set(buf); out.set(payload,buf.length);
-    out.set(u32(payload.length), buf.length+payload.length); out.set(FOOT, buf.length+payload.length+4);
-    return new Blob([out],{type:'video/mp4'});
-  }
-  async function seekVideo(fileOrURL){
-    const buf=new Uint8Array((fileOrURL instanceof Blob)? await fileOrURL.arrayBuffer() : await (await fetch(fileOrURL)).arrayBuffer());
-    const n=buf.length; if(!(buf[n-4]==0x50&&buf[n-3]==0x4C&&buf[n-2]==0x4D&&buf[n-1]==0x7E)) throw new Error('No hidden data found in this file.');
-    const L=rd32(buf,n-8); return buf.slice(n-8-L, n-8);
-  }
-
-  // ---- high level ----
-  // covers: [{type:'image'|'audio'|'text'|'video', url, name}]  (random from catalog)
-  async function scatter(messageBytes, passphrase, covers){
-    const blob=await encryptMsg(messageBytes, passphrase); const shards=await split(blob, covers.length); const outs=[];
-    for(let i=0;i<covers.length;i++){ const c=covers[i], sh=shards[i]; let out,fn;
-      if(c.type==='image'){ out=await hideImage(sh,c.url); fn=(c.name||'image')+'.png'; }
-      else if(c.type==='audio'){ out=await hideAudio(sh,c.url); fn=(c.name||'audio')+'.wav'; }
-      else if(c.type==='video'){ out=await hideVideo(sh,c.url); fn=(c.name||'video')+'.mp4'; }
-      else if(c.type==='text'){ const t=hideText(sh, c.url); out=new Blob([t],{type:'text/plain'}); fn=(c.name||'note')+'.txt'; }
-      outs.push({type:c.type, blob:out, filename:fn}); }
-    return outs;
-  }
-  async function gather(carriers, passphrase){
-    const shards=[];
-    for(const c of carriers){ if(c.type==='image')shards.push(await seekImage(c.file));
-      else if(c.type==='audio')shards.push(await seekAudio(c.file));
-      else if(c.type==='video')shards.push(await seekVideo(c.file));
-      else if(c.type==='text')shards.push(seekText(await c.file.text())); }
-    return await decryptMsg(reassemble(shards), passphrase);
-  }
-  window.STEALTH={scatter,gather,encryptMsg,decryptMsg,split,reassemble,
-    hideImage,seekImage,hideText,seekText,hideAudio,seekAudio,hideVideo,seekVideo,
-    utf8:(s)=>enc.encode(s), fromUtf8:(b)=>dec.decode(b)};
-})();
-
-</script>
-<script>
-const $=s=>document.querySelector(s);
-// ---------- themes (Day / Night / Red for night vision) ----------
-const savedTheme=(()=>{try{return localStorage.getItem('pigeon-theme')}catch(e){return null}})()||'day';
-function setTheme(t){ document.documentElement.setAttribute('data-theme', t==='day'?'':t||''); if(t==='day')document.documentElement.removeAttribute('data-theme');
-  document.querySelectorAll('#theme .tbtn').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); try{localStorage.setItem('pigeon-theme',t)}catch(e){} }
-document.querySelectorAll('#theme .tbtn').forEach(b=>b.onclick=()=>setTheme(b.dataset.t));
-setTheme(savedTheme);
-
-// ---------- geo math ----------
-const A='ABCDEFGHIJKLMNOPQRSTUVWX';
-function toGrid(lat,lon){ let L=lon+180, B=lat+90;
-  return A[Math.floor(L/20)]+A[Math.floor(B/10)]+Math.floor(L%20/2)+''+Math.floor(B%10)+
-    A.toLowerCase()[Math.floor(L%2*12)]+A.toLowerCase()[Math.floor(B%1*24)]; }
-function gridToLatLon(g){ g=g.trim().toUpperCase(); if(!/^[A-R]{2}[0-9]{2}([A-X]{2})?$/.test(g))return null;
-  let lon=(g.charCodeAt(0)-65)*20-180, lat=(g.charCodeAt(1)-65)*10-90;
-  lon+=(+g[2])*2; lat+=(+g[3]);
-  if(g.length>=6){ lon+=(g.charCodeAt(4)-65)*(2/24)+(1/24); lat+=(g.charCodeAt(5)-65)*(1/24)+(0.5/24); } else { lon+=1; lat+=0.5; }
-  return [lat,lon]; }
-const R=Math.PI/180;
-function bearing(a,b,c,d){ const y=Math.sin((d-b)*R)*Math.cos(c*R), x=Math.cos(a*R)*Math.sin(c*R)-Math.sin(a*R)*Math.cos(c*R)*Math.cos((d-b)*R); return (Math.atan2(y,x)/R+360)%360; }
-function distKm(a,b,c,d){ const h=Math.sin((c-a)*R/2)**2+Math.cos(a*R)*Math.cos(c*R)*Math.sin((d-b)*R/2)**2; return 2*6371*Math.asin(Math.sqrt(h)); }
-const compassName=d=>['N','NE','E','SE','S','SW','W','NW'][Math.round(d/45)%8];
+// ---------- propagation physics (AI-assisted, Claude) ----------
+const C_=299792458, G_=9.81;
+function bandFreqMHz(band){ const m=(band||'').match(/(\d+(?:\.\d+)?)\s*MHz/); return m?parseFloat(m[1]):null; }
+function braggHz(fMHz){ if(!fMHz) return null; const L=C_/(fMHz*1e6), lo=L/2; const v=Math.sqrt(G_*lo/(2*Math.PI)); return 2*v/L; }
+// saturation vapor pressure (hPa), T in C
+function esat(T){ return 6.112*Math.exp(17.62*T/(243.12+T)); }
+// refractivity N from T(C), P(hPa), vapor pressure e(hPa)
+function refractivity(T,P,e){ const TK=T+273.15; return 77.6*P/TK + 3.73e5*e/(TK*TK); }
+// specific humidity (g/kg) from vapor pressure e(hPa), pressure p(hPa)
+function spechum(e,p){ return 0.622*e/(p-0.378*e)*1000; }
+// Over-water ducting from SST, air temp, humidity, pressure. Two mechanisms:
+//  (1) EVAPORATION duct — moist saturated sea surface vs drier air aloft (specific-
+//      humidity deficit); strongest over warm seas, amplified when unstable.
+//  (2) SURFACE-BASED duct / INVERSION — warm dry air over a cooler sea (air-sea ΔT>0).
+// Both trap VHF/UHF over water. We report an indicative evaporation duct height, the
+// air-sea ΔT, the modified-refractivity gradient, and an overall likelihood.
+function ductAnalysis({sst,tair,rh,p}){
+  p=p||1013; if(sst==null||tair==null||rh==null) return null;
+  const eSurf=0.98*esat(sst), eAir=(rh/100)*esat(tair);
+  const qSurf=spechum(eSurf,p), qAir=spechum(eAir,p);
+  const dq=Math.max(0,qSurf-qAir);              // humidity deficit driving evaporation duct
+  const astd=tair-sst;                          // >0 warm air over cool sea (stable/inversion)
+  const stab=Math.max(0.5,Math.min(1.6,1+0.08*(-astd))); // unstable (astd<0) amplifies evap duct
+  let edh=Math.round(Math.max(0,Math.min(40, 2+2.2*dq*stab)));  // indicative evap duct height (m)
+  // modified-refractivity gradient over the first 10 m (auxiliary)
+  const dMdh=((refractivity(tair,p,eAir)+0.157*10)-(refractivity(sst,p,eSurf)))/10;
+  const inversion = astd>1.5;                   // warm air aloft -> surface-based duct
+  let like='Low';
+  if(edh>15 || (inversion&&astd>3)) like='High';
+  else if(edh>6 || inversion) like='Moderate';
+  return { edh, astd:+astd.toFixed(1), dMdh:+dMdh.toFixed(2), dq:+dq.toFixed(1), like,
+           mech: inversion?'surface inversion':(edh>6?'evaporation duct':'weak'),
+           superref: dMdh<0.079 };
+}
+function classifyDoppler(offsetHz, fMHz){
+  const fB=braggHz(fMHz); if(fB==null||offsetHz==null) return null;
+  const rig=parseFloat(LS.get('e-rigdrift','0'))||0;
+  const resid=offsetHz-rig; const tol=Math.max(0.3, fB*0.35);
+  const sea=Math.abs(Math.abs(resid)-fB)<=tol;
+  return { fB:+fB.toFixed(2), resid:+resid.toFixed(2), sea };
+}
+function num(id){ const v=parseFloat(($('#'+id).value||'').replace(/[^\d.\-]/g,'')); return isNaN(v)?null:v; }
 
 // ---------- state ----------
-let me=null, dest=null, heading=null, pickMode=false, shareMask=false;
-const coarse=v=>Math.round(v/0.01)*0.01;   // ~1.1 km grid for masked sharing
+let LOG = LS.get('e-log',[]);
+function saveLog(){ LS.set('e-log',LOG); }
 
-// ---------- map ----------
-const map=L.map('map',{zoomControl:true}).setView([13.1,-59.6],13);
-const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
-const terrain=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'&copy; OpenTopoMap (CC-BY-SA)'});
-street.addTo(map);
-let meMarker=null, destMarker=null, lineLayer=null;
-document.querySelectorAll('.layers button[data-layer]').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.layers button[data-layer]').forEach(x=>x.classList.toggle('on',x===b));
-  if(b.dataset.layer==='street'){ map.removeLayer(terrain); street.addTo(map); } else { map.removeLayer(street); terrain.addTo(map); }
+// ---------- populate selects ----------
+function fillSel(sel,arr,first){ sel.innerHTML=(first?`<option value="">${first}</option>`:'')+arr.map(x=>`<option>${x}</option>`).join(''); }
+fillSel($('#f-band'),BANDS); fillSel($('#f-mode'),MODES); fillSel($('#imp-band'),BANDS);
+$('#f-band').value="2m (144 MHz)"; $('#imp-band').value="2m (144 MHz)";
+fillSel($('#flt-band'),BANDS,'All bands'); fillSel($('#flt-mode'),MODES,'All modes');
+
+// ---------- tabs ----------
+$$('#tabs button').forEach(b=>b.onclick=()=>{ $$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  ['dash','new','log','analyzer','recorder','repeater','import','ssp','ai','email','tools','settings'].forEach(t=>$('#t-'+t).style.display = t===b.dataset.tab?'':'none');
+  if(b.dataset.tab==='dash') renderDash(); if(b.dataset.tab==='log') renderLog(); if(b.dataset.tab==='tools') renderTools();
+  if(b.dataset.tab==='email') renderEmail(); if(b.dataset.tab==='ssp') renderSSP(); if(b.dataset.tab==='ai') renderAI();
+  if(b.dataset.tab!=='analyzer' && anRun) stopAnalyzer(); if(b.dataset.tab!=='repeater' && rpRun) stopRepeater(); });
+
+// ---------- SSP — Sea Scatter Propagation (on-device physics) ----------
+const SSP = (()=>{
+  const C=299792458, G=9.81, R=6371, CEIL_2M=4000, CEIL_70=3000;
+  const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
+  function grid2ll(g){ g=(g||'').trim(); if(g.length<4) throw 'grid needs ≥4 chars (e.g. FK52)';
+    let lon=(g.charCodeAt(0)-65)*20-180, lat=(g.charCodeAt(1)-65)*10-90;
+    lon+=(+g[2])*2; lat+=(+g[3])*1;
+    if(g.length>=6){ lon+=(g.toUpperCase().charCodeAt(4)-65)*(2/24)+(1/24); lat+=(g.toUpperCase().charCodeAt(5)-65)*(1/24)+(0.5/24);} else {lon+=1;lat+=0.5;}
+    return [lat,lon]; }
+  function gc(la1,lo1,la2,lo2){ const p1=rad(la1),p2=rad(la2),dl=rad(lo2-lo1),dp=p2-p1;
+    const a=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+    const d=2*R*Math.asin(Math.min(1,Math.sqrt(a)));
+    const y=Math.sin(dl)*Math.cos(p2), x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+    return [d,(deg(Math.atan2(y,x))+360)%360]; }
+  function waypoints(la1,lo1,la2,lo2,n){ const p1=rad(la1),l1=rad(lo1),p2=rad(la2),l2=rad(lo2);
+    const d=2*Math.asin(Math.sqrt(Math.sin((p2-p1)/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin((l2-l1)/2)**2));
+    const out=[]; for(let i=0;i<=n;i++){ const f=i/n; if(d===0){out.push([la1,lo1]);continue;}
+      const A=Math.sin((1-f)*d)/Math.sin(d), B=Math.sin(f*d)/Math.sin(d);
+      const x=A*Math.cos(p1)*Math.cos(l1)+B*Math.cos(p2)*Math.cos(l2);
+      const y=A*Math.cos(p1)*Math.sin(l1)+B*Math.cos(p2)*Math.sin(l2);
+      const z=A*Math.sin(p1)+B*Math.sin(p2);
+      out.push([deg(Math.atan2(z,Math.hypot(x,y))),deg(Math.atan2(y,x))]); } return out; }
+  const esat=T=>6.1121*Math.exp((18.678-T/234.5)*(T/(257.14+T)));
+  const spechum=(e,P)=>621.97*e/(P-0.378*e);
+  function edh(sst,ta,rh,P){ const z0=1.5e-4, zr=10; let mMin=1e9, zMin=0, m0=null;
+    const eS=0.98*esat(sst), qS=spechum(eS,P), eR=(rh/100)*esat(ta), qR=spechum(eR,P);
+    for(let k=0;k<120;k++){ const z=0.1*Math.pow(60/0.1,k/119);
+      let fr=Math.log(z/z0)/Math.log(zr/z0); fr=Math.max(0,Math.min(1,fr));
+      const T=sst+(ta-sst)*fr, q=qS+(qR-qS)*fr, e=q*P/(621.97+0.378*q), Tk=T+273.15;
+      const N=77.6*P/Tk+3.73e5*e/(Tk*Tk), M=N+0.157*z; if(k===0)m0=M;
+      if(M<mMin){mMin=M;zMin=z;} }
+    return {edh:zMin, deficit:Math.max(0,m0-mMin), trapped:(zMin>0.11 && m0-mMin>0)}; }
+  const COEF={bias:-3.4,edh_min:0.12,trapped:3.1,deficit:0.03,inv:0.18,sst:0.05,fpen:-0.65,dpen:-0.0011};
+  const logit=x=>1/(1+Math.exp(-x));
+  function predict(ga,gb,fMHz,pathWx,forceDist){
+    const [la,loa]=grid2ll(ga),[lb,lob]=grid2ll(gb); let [dist,brg]=gc(la,loa,lb,lob);
+    if(forceDist) dist=forceDist;
+    const E=pathWx.map(w=>edh(w.sst,w.ta,w.rh,w.P));
+    const edhMin=Math.min(...E.map(e=>e.edh)), trapFrac=E.filter(e=>e.trapped).length/E.length;
+    const defMean=E.reduce((s,e)=>s+e.deficit,0)/E.length;
+    const invMax=Math.max(...pathWx.map(w=>Math.max(0,w.ta-w.sst)));
+    const sstMean=pathWx.reduce((s,w)=>s+w.sst,0)/pathWx.length;
+    const z=COEF.bias+COEF.edh_min*edhMin+COEF.trapped*trapFrac+COEF.deficit*defMean
+            +COEF.inv*invMax+COEF.sst*(sstMean-20)+COEF.fpen*(fMHz>300?1:0)+COEF.dpen*dist;
+    let raw=logit(z); const ceil=fMHz<300?CEIL_2M:CEIL_70;
+    const prob=dist<=ceil?raw:raw*Math.exp(-(dist-ceil)/ceil);
+    const verdict=prob>0.6?'LIKELY':prob>0.3?'POSSIBLE':prob>0.08?'UNLIKELY':'NOT SUPPORTED';
+    const mi=dist/1.609, band=mi<=1000?'≤1000 mi':mi<=3000?'≤3000 mi':mi<=6000?'≤6000 mi':'>6000 mi';
+    const notes=[];
+    if(dist>ceil) notes.push(`path ${dist.toFixed(0)} km exceeds the documented ${fMHz<300?'2 m':'70 cm'} over-sea ceiling (~${ceil} km): modelled probability is near zero, shown for completeness — not a realistic opening.`);
+    if(trapFrac<0.6) notes.push('duct is not continuous along the whole path (weakest-link grids break it).');
+    if(edhMin>=15) notes.push('strong evaporation duct present along the path.');
+    return {ga,gb,la,loa,lb,lob,dist:+dist.toFixed(1),mi:+mi.toFixed(0),brg:+brg.toFixed(1),band,fMHz,
+            prob:+prob.toFixed(3),verdict,edhMin:+edhMin.toFixed(1),trapFrac,notes};
+  }
+  return {grid2ll,gc,waypoints,predict};
+})();
+
+let _sspResult=null;
+function renderSSP(){ const a=$('#ssp-a'); if(a&&!a.value){} }
+async function fetchMarine(lat,lon){
+  // Open-Meteo marine + forecast (no key). Returns one representative wx dict.
+  try{
+    const m=await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&current=sea_surface_temperature`).then(r=>r.json());
+    const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m`).then(r=>r.json());
+    const sst=m?.current?.sea_surface_temperature, ta=w?.current?.temperature_2m;
+    if(sst==null||ta==null) return null;
+    return {sst, ta, rh:w.current.relative_humidity_2m, P:w.current.surface_pressure, U:(w.current.wind_speed_10m||0)/3.6};
+  }catch(e){ return null; }
+}
+async function sspRun(){
+  const ga=$('#ssp-a').value, gb=$('#ssp-b').value, f=+$('#ssp-freq').value;
+  const st=$('#ssp-status'); $('#ssp-wxcard').style.display='';
+  let ll1,ll2; try{ ll1=SSP.grid2ll(ga); ll2=SSP.grid2ll(gb);}catch(e){ st.textContent='⚠ '+e; return; }
+  st.textContent='Fetching marine weather along path…';
+  const wpt=SSP.waypoints(ll1[0],ll1[1],ll2[0],ll2[1],10);
+  let path=[], live=0;
+  for(const [la,lo] of wpt){ const w=await fetchMarine(la,lo); if(w){path.push(w);live++;} }
+  let src;
+  if(path.length>=Math.ceil(wpt.length*0.5)){ src=`live Open-Meteo at ${live}/${wpt.length} waypoints`; }
+  else { const man={sst:+$('#wx-sst').value,ta:+$('#wx-ta').value,rh:+$('#wx-rh').value,P:+$('#wx-p').value,U:+$('#wx-u').value};
+    path=wpt.map(()=>man); src='manual values (live fetch unavailable offline)'; }
+  $('#ssp-wxnote').textContent='Weather source: '+src+'.';
+  const bandSel=$('#ssp-band').value; const force=bandSel==='auto'?null:+bandSel;
+  const r=SSP.predict(ga,gb,f,path,force); _sspResult=r;
+  st.textContent='';
+  $('#ssp-rescard').style.display='';
+  const col=r.verdict==='LIKELY'?'#28c76f':r.verdict==='POSSIBLE'?'#ff9f43':r.verdict==='UNLIKELY'?'#ff7a45':'#ea5455';
+  $('#ssp-res').innerHTML=
+    `<div style="font-size:15px"><b>${r.ga} → ${r.gb}</b> · ${r.dist} km (${r.mi} mi) · brg ${r.brg}° · ${r.band}</div>`+
+    `<div style="margin:6px 0"><b>${f} MHz</b> · P(workable sea-scatter/duct path) = `+
+    `<b style="color:${col}">${(r.prob*100).toFixed(0)}% — ${r.verdict}</b></div>`+
+    `<div class="muted">EDH (weakest grid) ${r.edhMin} m · duct continuous over ${(r.trapFrac*100).toFixed(0)}% of path</div>`+
+    (r.notes.length?('<ul style="margin:8px 0 0;padding-left:16px">'+r.notes.map(n=>`<li>${n}</li>`).join('')+'</ul>'):'');
+}
+function sspText(){ const r=_sspResult; if(!r) return '';
+  return `Einstein SSP — Sea Scatter Propagation analysis\n`+
+    `${r.ga} -> ${r.gb} | ${r.dist} km (${r.mi} mi) | bearing ${r.brg} deg | ${r.band}\n`+
+    `${r.fMHz} MHz: P(workable) = ${(r.prob*100).toFixed(0)}% [${r.verdict}]\n`+
+    `Evaporation duct (weakest grid) ${r.edhMin} m; duct continuous ${(r.trapFrac*100).toFixed(0)}% of path.\n`+
+    (r.notes.length?('Notes:\n- '+r.notes.join('\n- ')+'\n'):'')+
+    `(AI-assisted, honest physics-capped estimate — not a guarantee of an opening.)`;
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const run=$('#ssp-run'); if(run) run.onclick=sspRun;
+  const pu=$('#ssp-popup'); if(pu) pu.onclick=()=>alert(sspText());
+  const ml=$('#ssp-mail'); if(ml) ml.onclick=()=>{ const to=$('#ssp-email').value.trim();
+    location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent('Einstein SSP analysis '+(_sspResult?_sspResult.ga+'→'+_sspResult.gb:''))}&body=${encodeURIComponent(sspText())}`; };
+  const wa=$('#ssp-whats'); if(wa) wa.onclick=()=>{ const num=$('#ssp-wa').value.replace(/[^0-9]/g,'');
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(sspText())}`,'_blank'); };
 });
 
-// ---------- Ham RF layer: licensed operators heard over RF (clear-text grids) ----------
-const rfLayer = L.layerGroup();
-let rfOn=false, rfTimer=null;
-async function pollRF(){
-  try{
-    const base=(CONFIG.relay||'').replace(/\/+$/,''); if(!base||base.includes('YOURNAME')) return;
-    const r=await fetch(base+'/rf'); const j=await r.json();
-    rfLayer.clearLayers();
-    (j.stations||[]).forEach(s=>{
-      if(typeof s.lat!=='number'||typeof s.lon!=='number') return;
-      const age=Date.now()-(s.ts||0), fresh=age<30*60000;
-      const dot=L.circleMarker([s.lat,s.lon],{radius:7,color:'#ff3b30',weight:2,fillColor:'#ff3b30',fillOpacity:fresh?0.9:0.4});
-      dot.bindTooltip('📻 '+s.callsign+' · '+(s.grid||'')+' · '+(s.mode||'RF'),{direction:'top'});
-      rfLayer.addLayer(dot);
-    });
-  }catch(e){}
+// ---------- AI / Cognitive engine (on-device) ----------
+const COG = (()=>{
+  const bandOf=f=> f<30?'HF':f<54?'6m':f<148?'2m':f<450?'70cm':'UHF+';
+  const crossEq=(a,b)=>(a>0)!==(b>0);
+  const isNS=b=>Math.min(Math.abs(b),Math.abs(b-180),Math.abs(b-360))<=45;
+  function classify(sp, myGrid, now){
+    const [la1,lo1]=SSP.grid2ll(myGrid), [la2,lo2]=SSP.grid2ll(sp.grid);
+    const [dist,brg]=SSP.gc(la1,lo1,la2,lo2); const band=bandOf(sp.freq);
+    const hour=new Date((now||Date.now())).getUTCHours(); const midlat=(Math.abs(la1)+Math.abs(la2))/2;
+    const C=[];
+    if(band==='HF'){
+      if(dist>2500)C.push(['F2',0.8,`HF, ${dist.toFixed(0)} km > 2500 — classic F2 skip`]);
+      else if(dist>400)C.push(['F2/NVIS',0.5,`HF, ${dist.toFixed(0)} km — F2/E one-hop or NVIS`]);
+      else C.push(['Ground-wave/NVIS',0.6,`HF short ${dist.toFixed(0)} km`]);
+      if(crossEq(la1,la2)&&isNS(brg)&&dist>3000&&hour>=14&&hour<=23)C.push(['TEP',0.6,'HF crosses geomagnetic equator, N–S, evening']);
+    } else if(band==='6m'||band==='2m'){
+      if(dist>=800&&dist<=2300&&band==='6m')C.push(['Sporadic-E',0.75,`6m, ${dist.toFixed(0)} km in the 800–2300 km Es window`]);
+      if(band==='6m'&&dist>2300&&dist<=9000)C.push(['Multi-hop Es / F2',0.45,`6m, ${dist.toFixed(0)} km — multi-hop Es or F2`]);
+      if(band==='2m'&&dist>=1000&&dist<=2200)C.push(['Sporadic-E',0.45,`2m, ${dist.toFixed(0)} km — rarer 2m Es`]);
+      if(crossEq(la1,la2)&&isNS(brg)&&dist>=3000&&dist<=8000&&hour>=15&&hour<=23&&midlat<35)C.push(['TEP',0.7,`VHF N–S trans-equatorial, ${dist.toFixed(0)} km, evening`]);
+      if(dist<=2000&&sp.snr>-5)C.push(['Tropo-duct',0.55,`VHF ${dist.toFixed(0)} km, workable SNR — ducting`]);
+      if(dist<=300)C.push(['Ground-wave/LOS',0.7,`VHF short ${dist.toFixed(0)} km`]);
+      if(dist>300&&dist<=2000)C.push(['Tropo-scatter',0.3,`VHF ${dist.toFixed(0)} km — weak tropo-scatter`]);
+      if(dist>=400&&dist<=2300&&!sp.beacon)C.push(['Meteor-scatter',0.2,`VHF ${dist.toFixed(0)} km — meteor bursts possible`]);
+    } else if(band==='70cm'){
+      if(dist<=300)C.push(['Ground-wave/LOS',0.7,`70cm short ${dist.toFixed(0)} km`]);
+      if(dist<=1500&&sp.snr>-3)C.push(['Tropo-duct',0.6,`70cm ${dist.toFixed(0)} km — ducting`]);
+      if(dist>300&&dist<=1500)C.push(['Tropo-scatter',0.3,`70cm ${dist.toFixed(0)} km — tropo-scatter`]);
+    }
+    if(!C.length){ if((band==='2m'||band==='70cm')&&dist>2300)C.push(['Beyond normal VHF/UHF modes',0.15,`${band}, ${dist.toFixed(0)} km — only exceptional chains`]);
+      else C.push(['Unknown',0.2,`${band}, ${dist.toFixed(0)} km — no strong match`]); }
+    C.sort((a,b)=>b[1]-a[1]);
+    return {call:sp.call,grid:sp.grid,band,dist:+dist.toFixed(0),mi:+(dist/1.609).toFixed(0),brg:+brg.toFixed(0),
+            snr:sp.snr,mode:C[0][0],conf:C[0][1],reason:C[0][2]};
+  }
+  const LADDER=[{p:'STANDARD',min:2,bps:560},{p:'PRO',min:10,bps:2679},{p:'PRO_VHF',min:25,bps:9000}];
+  function adapt(snr,band,margin=3){ const u=snr-margin;
+    const L=LADDER.filter(r=>!(r.p==='PRO_VHF'&&(band==='HF'||band==='6m')));
+    let c=L[0]; for(const r of L) if(u>=r.min) c=r;
+    return {...c, headroom:+(u-c.min).toFixed(0)}; }
+  function redundancy(h){ if(h.length<3)return{a:'hold',r:'not enough samples'};
+    const rc=h.slice(-3), tr=rc[2]-rc[0];
+    if(rc[2]<0)return{a:'FAILOVER',r:`SNR ${rc[2]} dB below floor — drop to STANDARD and re-hail`};
+    if(tr<-6)return{a:'THROTTLE DOWN',r:`SNR falling fast (${tr} dB/3) — step down`};
+    if(tr>6)return{a:'THROTTLE UP',r:`SNR rising (${tr>0?'+':''}${tr} dB) — try next rung`};
+    return{a:'hold',r:`link stable (SNR ${rc[2]} dB)`}; }
+  return {classify,adapt,redundancy,bandOf};
+})();
+
+let _spots=[];
+function gridOK(){ const g=(LS.get('e-mygrid','')||'').trim(); try{SSP.grid2ll(g);return g;}catch(e){return null;} }
+function renderAI(){
+  const g=gridOK();
+  $('#ai-gridnote').innerHTML = g ? `Your grid: <b>${g}</b> — bearings/distances computed from it.`
+    : `⚠ Set a valid grid square in <b>Settings → Station setup</b> first; the AI engine needs it.`;
+  drawSpots();
 }
-const rfBtn=$('#rf-toggle');
-if(rfBtn) rfBtn.onclick=()=>{
-  rfOn=!rfOn; rfBtn.classList.toggle('on',rfOn);
-  if(rfOn){ rfLayer.addTo(map); pollRF(); rfTimer=setInterval(pollRF,20000); }
-  else { clearInterval(rfTimer); map.removeLayer(rfLayer); }
+function drawSpots(){ const g=gridOK(); const t=$('#hs-tbl');
+  if(!_spots.length){ t.innerHTML='<tr><td class="muted">No spots captured yet.</td></tr>'; $('#ai-anacard').style.display='none'; return; }
+  let rows='<tr><th>Call</th><th>Band</th><th>km</th><th>brg</th><th>SNR</th><th>Mode (conf)</th></tr>';
+  const cls=[];
+  for(const sp of _spots){ if(!g){ rows+=`<tr><td>${sp.call}</td><td colspan=5 class="muted">set grid</td></tr>`; continue; }
+    const c=COG.classify(sp,g); cls.push(c);
+    rows+=`<tr><td><b>${c.call}</b></td><td>${c.band}</td><td>${c.dist}</td><td>${c.brg}°</td><td>${c.snr>0?'+':''}${c.snr}</td>`+
+      `<td>${c.mode} <span class="muted">(${c.conf})</span><br><span class="small muted">${c.reason}</span></td></tr>`; }
+  t.innerHTML=rows;
+  if(g&&cls.length){ // direction analysis
+    const names=['N','NE','E','SE','S','SW','W','NW']; const sec={};
+    for(const c of cls){ const i=Math.floor(((c.brg+22.5)%360)/45); (sec[names[i]]=sec[names[i]]||[]).push(c); }
+    let out='';
+    for(const s of names){ const l=sec[s]; if(!l)continue; const m={};
+      for(const c of l) m[c.mode]=Math.max(m[c.mode]||0,c.conf);
+      const bm=Object.keys(m).reduce((a,b)=>m[b]>m[a]?b:a);
+      out+=`<div><b>${s}</b>: ${bm} <span class="muted">(conf ${m[bm]}, ${l.length} stn, to ${Math.max(...l.map(c=>c.dist))} km)</span> — ${l.map(c=>c.call).join(', ')}</div>`; }
+    $('#ai-dir').innerHTML=out||'<span class="muted">no open sectors</span>'; $('#ai-anacard').style.display='';
+  }
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const add=$('#hs-add'); if(add) add.onclick=()=>{ const c=$('#hs-call').value.trim().toUpperCase(), gr=$('#hs-grid').value.trim().toUpperCase();
+    if(!c||!gr){return;} _spots.push({call:c,grid:gr,freq:+$('#hs-freq').value,snr:+$('#hs-snr').value,beacon:$('#hs-beacon').checked}); $('#hs-call').value='';$('#hs-grid').value=''; drawSpots(); };
+  const demo=$('#hs-demo'); if(demo) demo.onclick=()=>{ _spots=[
+    {call:'LU5DX',grid:'GF05',freq:50.313,snr:-5,beacon:true},{call:'EA8ABC',grid:'IL38',freq:144.3,snr:3,beacon:true},
+    {call:'W1AW',grid:'FN31',freq:14.074,snr:12,beacon:false},{call:'PY2XYZ',grid:'GG66',freq:144.3,snr:-2,beacon:false},
+    {call:'8P9AB',grid:'GK03',freq:432.1,snr:15,beacon:false}]; drawSpots(); };
+  const clr=$('#hs-clear'); if(clr) clr.onclick=()=>{ _spots=[]; drawSpots(); };
+  const ad=$('#ai-adapt'); if(ad) ad.onclick=()=>{ const snr=+$('#ai-snr').value, band=$('#ai-band').value; const a=COG.adapt(snr,band);
+    const r=COG.redundancy([snr+10,snr+4,snr]); $('#ai-link').style.display='';
+    $('#ai-link').innerHTML=`<b>Throttle → ${a.p}</b> (${a.bps} bps) · headroom ${a.headroom>0?'+':''}${a.headroom} dB on ${band}<br>`+
+      `<span class="muted">Redundancy watch: <b>${a.r===undefined?'':''}</b>${COG.redundancy([snr+10,snr+4,snr]).a} — ${r.r}</span>`; };
+  const bb=$('#bc-build'); if(bb) bb.onclick=()=>{ const g=gridOK(); if(!g){ $('#bc-out').style.display=''; $('#bc-out').innerHTML='⚠ Set your grid in Settings first.'; return; }
+    const call=(LS.get('e-mycall','')||'MYCALL').toUpperCase(), tgt=$('#bc-tgt').value.trim().toUpperCase()||'CQ', f=+$('#bc-freq').value;
+    const cmd=`python3 -c "import einstein_beacon as b; import einstein_modem as m; fr=b.build_beacon('${call}','${g}',${f},['STANDARD','PRO','PRO_VHF'],target='${tgt}'); y,meta=m.modulate(fr,'STANDARD'); print('Einstein Beacon',len(fr),'bytes — TX on ${f} MHz')"`;
+    window._bcCmd=cmd; $('#bc-out').style.display='';
+    $('#bc-out').innerHTML=`<b>Hail ready:</b> ${call} @ ${g} → ${tgt} on ${f} MHz<br><span class="muted">Caps advertised: STANDARD, PRO, PRO_VHF. Run on the SDR/soundcard host:</span><br><code style="font-size:11px;word-break:break-all">${cmd}</code>`; };
+  const bcp=$('#bc-copy'); if(bcp) bcp.onclick=()=>{ if(window._bcCmd){navigator.clipboard?.writeText(window._bcCmd); bcp.textContent='Copied'; setTimeout(()=>bcp.textContent='Copy TX command',1200);} };
+  // IP auto-detect (best-effort WebRTC; editable)
+  const det=$('#ip-detect'); if(det) det.onclick=detectIP;
+});
+function detectIP(){
+  const el=$('#my-ip'); if(!el) return;
+  try{
+    const pc=new RTCPeerConnection({iceServers:[]}); pc.createDataChannel('x');
+    pc.onicecandidate=e=>{ if(!e.candidate) return; const m=/([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(e.candidate.candidate);
+      if(m && !m[1].startsWith('0.')){ if(!el.value||el.value==='detecting…') el.value=m[1]; } };
+    pc.createOffer().then(o=>pc.setLocalDescription(o));
+    setTimeout(()=>{ try{pc.close();}catch(e){} if(el.value==='detecting…'||!el.value) el.value=''; },1500);
+  }catch(e){ el.value=''; }
+}
+
+// ---------- Einstein Email / Modem ----------
+const EM_TIERS = {
+  STANDARD: {name:'Standard (free)', bw:'~1000 Hz', mod:'QPSK', bps:'≈0.56 kbps',
+    gov:'30 s/over, 120 s per 10 min', note:'Bandwidth- and airtime-limited free tier.'},
+  PRO: {name:'Einstein Pro (HF)', bw:'~2400 Hz (SSB passband)', mod:'16-QAM', bps:'≈2.7 kbps',
+    gov:'unlimited airtime', note:'HF SSB is bandwidth-capped near 2.4 kHz. Governor removed, ARQ.'},
+  PRO_VHF: {name:'Einstein Pro — VHF/FM wideband', bw:'~6 kHz (FM audio) @ 16 kHz', mod:'64-QAM', bps:'≈9 kbps usable (≈14 kbps clean gross)',
+    gov:'unlimited airtime', note:'Needs a strong local VHF/FM link (~25+ dB SNR) for 64-QAM. Not for HF SSB.'}
 };
-// Tap anywhere on the map to drop a destination pin (no arming needed; a drag/pan won't trigger this).
-map.on('click',e=>{ setDest(e.latlng.lat,e.latlng.lng); const pk=$('#pick'); if(pk){ pk.textContent='📍 Destination set ✓'; setTimeout(()=>pk.textContent='📍 Pick on map',1600); } });
-// keep map geometry correct on mobile (layout shifts, rotation, scrolling into view)
-map.whenReady(()=>setTimeout(()=>map.invalidateSize(),200));
-window.addEventListener('resize',()=>map.invalidateSize());
-window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
-try{ new IntersectionObserver(es=>{ if(es.some(x=>x.isIntersecting)) map.invalidateSize(); }).observe(document.querySelector('.map-wrap')); }catch(e){}
-
-// ---------- destination (grid square · postal code · place name · coordinates) ----------
-// ---- destination: country dropdown + zip/postal code (geocoded) ----
-const COUNTRIES=[["BB","Barbados"],["US","United States"],["CA","Canada"],["GB","United Kingdom"],["JM","Jamaica"],["TT","Trinidad & Tobago"],["GY","Guyana"],["SR","Suriname"],["BS","Bahamas"],["AG","Antigua & Barbuda"],["DM","Dominica"],["GD","Grenada"],["KN","St Kitts & Nevis"],["LC","St Lucia"],["VC","St Vincent & Grenadines"],["AU","Australia"],["NZ","New Zealand"],["IE","Ireland"],["FR","France"],["DE","Germany"],["ES","Spain"],["PT","Portugal"],["IT","Italy"],["NL","Netherlands"],["BE","Belgium"],["CH","Switzerland"],["AT","Austria"],["SE","Sweden"],["NO","Norway"],["DK","Denmark"],["FI","Finland"],["PL","Poland"],["CZ","Czechia"],["GR","Greece"],["RO","Romania"],["HU","Hungary"],["IN","India"],["PK","Pakistan"],["BD","Bangladesh"],["LK","Sri Lanka"],["CN","China"],["JP","Japan"],["KR","South Korea"],["SG","Singapore"],["MY","Malaysia"],["TH","Thailand"],["PH","Philippines"],["ID","Indonesia"],["VN","Vietnam"],["AE","United Arab Emirates"],["SA","Saudi Arabia"],["QA","Qatar"],["IL","Israel"],["TR","Turkey"],["ZA","South Africa"],["NG","Nigeria"],["KE","Kenya"],["GH","Ghana"],["EG","Egypt"],["MA","Morocco"],["MX","Mexico"],["BR","Brazil"],["AR","Argentina"],["CL","Chile"],["CO","Colombia"],["PE","Peru"],["VE","Venezuela"],["EC","Ecuador"],["BO","Bolivia"],["PY","Paraguay"],["UY","Uruguay"],["PA","Panama"],["CR","Costa Rica"],["GT","Guatemala"],["DO","Dominican Republic"],["PR","Puerto Rico"],["CU","Cuba"],["RU","Russia"],["UA","Ukraine"]];
-(function(){ const sel=$('#dest-country'); if(!sel) return; COUNTRIES.forEach(([c,n])=>{ const o=document.createElement('option'); o.value=c; o.textContent=n; sel.appendChild(o); }); sel.value='BB'; })();
-function setDest(lat,lon){ dest={lat,lon};
-  if(destMarker)destMarker.setLatLng([lat,lon]); else destMarker=L.marker([lat,lon]).addTo(map).bindTooltip('Destination');
-  draw(); updateNav(); }
-// Accepts a postal/zip code OR a town / area / address. Postal codes don't resolve
-// everywhere (e.g. Barbados isn't in the free map database), so we also try free text.
-async function geocodeZip(q, cc){
-  const cname=(COUNTRIES.find(c=>c[0]===cc)||[])[1]||'';
-  const base='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes='+cc.toLowerCase();
-  const tryUrl=async u=>{ try{ const r=await fetch(u,{headers:{'Accept':'application/json'}}); const j=await r.json(); return (j&&j[0])?[parseFloat(j[0].lat),parseFloat(j[0].lon)]:null; }catch(e){ return null; } };
-  // 1) as a postal code, 2) as free text within the country, 3) free text + country name
-  return await tryUrl(base+'&postalcode='+encodeURIComponent(q))
-      || await tryUrl(base+'&q='+encodeURIComponent(q))
-      || await tryUrl('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(q+(cname?(', '+cname):'')));
+function renderEmail(){
+  const t = $('#em-to'), f=$('#em-from'); if(!f.value) f.value=(LS.get('e-mycall','')||'');
+  emTierInfo();
 }
-$('#set-dest').onclick=async()=>{
-  const q=$('#dest-zip').value.trim(), cc=$('#dest-country').value, btn=$('#set-dest');
-  if(!q) return alert('Enter a destination — a town, area, address, or postal/zip code.');
-  btn.textContent='Searching…'; btn.disabled=true;
-  let p=null; try{ p=await geocodeZip(q, cc); }catch(e){}
-  btn.textContent='Set destination'; btn.disabled=false;
-  if(!p) return alert('Couldn’t find “'+q+'” in that country. Postal codes don’t resolve everywhere (Barbados codes aren’t in the free map data) — try a town, area or street (e.g. “Bridgetown” or “Holetown, St James”), or just tap the map to drop a pin.');
-  setDest(p[0],p[1]); map.setView([p[0],p[1]],Math.max(map.getZoom(),13));
+function emTierInfo(){
+  const k=$('#em-tier').value, T=EM_TIERS[k];
+  $('#em-tierinfo').innerHTML = `<b>${T.name}</b><br>Bandwidth ${T.bw} · ${T.mod} · ${T.bps}<br>`+
+    `Airtime: ${T.gov}<br><span class="muted">${T.note}</span>`;
+}
+function emBuild(){
+  const to=$('#em-to').value.trim().toUpperCase(), fr=$('#em-from').value.trim().toUpperCase();
+  const subj=$('#em-subj').value.trim(), body=$('#em-body').value;
+  if(!to||!fr||!body){ $('#em-out').style.display=''; $('#em-out').innerHTML='<b>Fill To, From and a message.</b>'; return; }
+  const tier=$('#em-tier').value;
+  const cmd = `python3 -c "import einstein_email as e; `+
+    `blob=e.build_message('${fr}','${to}',${JSON.stringify(subj)},${JSON.stringify(body)}); `+
+    `import einstein_modem as m; y,meta=m.modulate(blob,'${tier}'); `+
+    `print('blob',len(blob),'bytes; transmit via soundcard at Fs=8000')"`;
+  window._emCmd = cmd;
+  const bytes = new Blob([body]).size;
+  $('#em-out').style.display='';
+  $('#em-out').innerHTML = `<b>Ready — ${EM_TIERS[tier].name}</b><br>`+
+    `${to} ← ${fr} · "${subj||'(no subject)'}" · ${bytes} B body<br>`+
+    `<span class="muted">Clear text, zlib-compressed, CRC + ARQ. Run on the SDR/soundcard host:</span><br>`+
+    `<code style="font-size:11px;word-break:break-all">${cmd}</code>`;
+}
+function emCopy(){ if(window._emCmd){ (navigator.clipboard?.writeText(window._emCmd)); const o=$('#em-copy'); o.textContent='Copied'; setTimeout(()=>o.textContent='Copy TX command',1200);} }
+document.addEventListener('DOMContentLoaded',()=>{
+  const ti=$('#em-tier'); if(ti) ti.onchange=emTierInfo;
+  const b=$('#em-build'); if(b) b.onclick=emBuild;
+  const c=$('#em-copy'); if(c) c.onclick=emCopy;
+});
+
+// ---------- shared audio input ----------
+let audioCtx=null;
+async function micSource(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  return {stream, src:audioCtx.createMediaStreamSource(stream)}; }
+
+// ---------- Signal analyzer: spectrum + waterfall ----------
+let anRun=false, anRAF=null, anStream=null;
+async function startAnalyzer(){ if(anRun) return;
+  try{ const {stream,src}=await micSource(); anStream=stream;
+    const an=audioCtx.createAnalyser(); an.fftSize=2048; src.connect(an);
+    const bins=an.frequencyBinCount, data=new Uint8Array(bins);
+    const spec=$('#an-spec'), sx=spec.getContext('2d'), fall=$('#an-fall'), fx=fall.getContext('2d');
+    const nyq=audioCtx.sampleRate/2, maxHz=6000, maxBin=Math.min(bins, Math.round(maxHz/nyq*bins));
+    anRun=true; $('#an-state').textContent='running'; $('#an-start').classList.add('on');
+    const draw=()=>{ if(!anRun) return; an.getByteFrequencyData(data);
+      const acc=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#66e0ff';
+      const night=window.isNight;
+      sx.clearRect(0,0,spec.width,spec.height); sx.strokeStyle=acc; sx.beginPath();
+      let peak=0,pk=0,sum=0; for(let i=0;i<maxBin;i++){ const v=data[i]; sum+=v; if(v>peak){peak=v;pk=i;}
+        const x=i/maxBin*spec.width, y=spec.height-(v/255)*spec.height; i?sx.lineTo(x,y):sx.moveTo(x,y); }
+      sx.stroke();
+      // waterfall scroll — red palette in Night (NVG-safe), blue→cyan otherwise
+      const img=fx.getImageData(0,0,fall.width,fall.height); fx.putImageData(img,0,1);
+      for(let x=0;x<fall.width;x++){ const i=Math.floor(x/fall.width*maxBin); const v=data[i];
+        fx.fillStyle = night ? `hsl(0,95%,${Math.min(55,v/4)}%)` : `hsl(${200-v},90%,${Math.min(60,v/3)}%)`;
+        fx.fillRect(x,0,1,1); }
+      const peakHz=Math.round(pk/bins*nyq); const mean=sum/maxBin;
+      const snr=peak>0?Math.round(20*Math.log10((peak+1)/(mean+1))):0;
+      $('#an-peak').textContent=peakHz+' Hz'; $('#an-lvl').textContent=Math.round(peak/255*100)+'%'; $('#an-snr').textContent=snr+' dB';
+      anRAF=requestAnimationFrame(draw); };
+    draw();
+  }catch(e){ $('#an-state').textContent='mic/line-in blocked'; }
+}
+function stopAnalyzer(){ anRun=false; if(anRAF)cancelAnimationFrame(anRAF); if(anStream)anStream.getTracks().forEach(t=>t.stop()); anStream=null; $('#an-state').textContent='stopped'; $('#an-start').classList.remove('on'); }
+$('#an-start').onclick=startAnalyzer; $('#an-stop').onclick=stopAnalyzer;
+
+// ---------- Audio recorder ----------
+let mediaRec=null, recChunks=[], recT0=0, recStream=null, recUrls=[];
+$('#rec-start').onclick=async()=>{ if(mediaRec) return;
+  try{ recStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    mediaRec=new MediaRecorder(recStream); recChunks=[]; recT0=Date.now();
+    mediaRec.ondataavailable=e=>recChunks.push(e.data);
+    mediaRec.onstop=()=>{ const blob=new Blob(recChunks,{type:mediaRec.mimeType||'audio/webm'}); const url=URL.createObjectURL(blob); recUrls.push(url);
+      const secs=Math.round((Date.now()-recT0)/1000); const name='einstein_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.webm';
+      const row=document.createElement('div'); row.className='st-carrier'; row.style.cssText='display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:9px;padding:8px;margin-top:6px';
+      row.innerHTML='<span style="flex:1" class="small mono">'+name+' · '+secs+'s</span>';
+      const a=document.createElement('a'); a.href=url; a.download=name; a.className='btn sm'; a.textContent='Download'; row.appendChild(a);
+      const au=document.createElement('audio'); au.controls=true; au.src=url; au.style.cssText='display:block;width:100%;margin-top:6px';
+      const wrap=document.createElement('div'); wrap.appendChild(row); wrap.appendChild(au); $('#rec-list').prepend(wrap); };
+    mediaRec.start(); $('#rec-state').textContent='● recording…'; }
+  catch(e){ $('#rec-state').textContent='mic/line-in blocked'; } };
+$('#rec-stop').onclick=()=>{ if(mediaRec){ mediaRec.stop(); recStream.getTracks().forEach(t=>t.stop()); mediaRec=null; $('#rec-state').textContent='idle'; } };
+
+// ---------- Crossband repeater controller (monitor + keying logic) ----------
+let rpRun=false, rpRAF=null, rpStream=null, rpKeyed=false, rpHangUntil=0, rpCount=0;
+async function startRepeater(){ if(rpRun) return;
+  try{ const {stream,src}=await micSource(); rpStream=stream;
+    const an=audioCtx.createAnalyser(); an.fftSize=1024; src.connect(an); const data=new Uint8Array(an.frequencyBinCount);
+    rpRun=true; $('#rp-state').textContent='listening';
+    const loop=()=>{ if(!rpRun) return; an.getByteFrequencyData(data);
+      let s=0; for(const v of data)s+=v; const lvl=Math.round(s/data.length/255*100);
+      $('#rp-lvl').textContent=lvl+'%';
+      const thr=+$('#rp-thr').value, hang=(parseFloat($('#rp-hang').value)||1.5)*1000, now=Date.now();
+      if(lvl>=thr){ rpHangUntil=now+hang; if(!rpKeyed){ rpKeyed=true; rpCount++; $('#rp-count').textContent=rpCount; $('#rp-state').textContent='▶ TX (key radio B)'; /* desktop helper: rigctld PTT ON */ } }
+      else if(rpKeyed && now>rpHangUntil){ rpKeyed=false; $('#rp-state').textContent='listening'; /* rigctld PTT OFF */ }
+      rpRAF=requestAnimationFrame(loop); };
+    loop();
+  }catch(e){ $('#rp-state').textContent='mic/line-in blocked'; } }
+function stopRepeater(){ rpRun=false; if(rpRAF)cancelAnimationFrame(rpRAF); if(rpStream)rpStream.getTracks().forEach(t=>t.stop()); rpStream=null; rpKeyed=false; $('#rp-state').textContent='idle'; }
+$('#rp-start').onclick=startRepeater; $('#rp-stop').onclick=stopRepeater;
+
+// ---------- Tools: MMSI decoder, Selcall reference, ALE channels ----------
+const MID={ "201":"Albania","203":"Austria","205":"Belgium","211":"Germany","224":"Spain","226":"France",
+ "232":"United Kingdom","233":"United Kingdom","234":"United Kingdom","235":"United Kingdom","244":"Netherlands",
+ "247":"Italy","257":"Norway","265":"Sweden","273":"Russia","303":"Alaska (USA)","338":"USA","366":"USA","367":"USA",
+ "316":"Canada","309":"Bahamas","314":"Barbados","339":"Jamaica","343":"St Lucia","347":"St Vincent","345":"Mexico",
+ "351":"Panama","375":"St Kitts & Nevis","379":"US Virgin Is","431":"Japan","440":"South Korea","503":"Australia",
+ "512":"New Zealand","563":"Singapore","710":"Brazil","725":"Chile","775":"Venezuela" };
+function midCountry(m){ return MID[m]||('MID '+m+' (not in table)'); }
+function mmsiDecode(s){ s=(s||'').trim();
+  if(!/^\d{9}$/.test(s)) return {valid:false,error:'MMSI must be exactly 9 digits'};
+  let cat,mid;
+  if(s.startsWith('111')){cat='SAR aircraft';mid=s.slice(3,6);}
+  else if(s.startsWith('00')){cat='Coast station';mid=s.slice(2,5);}
+  else if(s.startsWith('0')){cat='Group of ships';mid=s.slice(1,4);}
+  else if(s.startsWith('99')){cat='Aid to navigation (AtoN)';mid=s.slice(2,5);}
+  else if(s.startsWith('98')){cat='Craft w/ parent ship';mid=s.slice(2,5);}
+  else if(s.startsWith('8')){return {valid:true,mmsi:s,category:'Handheld VHF/DSC',mid:'-',country:'(no national MID)'};}
+  else {cat='Ship station';mid=s.slice(0,3);}
+  return {valid:true,mmsi:s,category:cat,mid,country:midCountry(mid)};
+}
+const SELCALL={
+ 'CCIR (100 ms)':{0:1981,1:1124,2:1197,3:1275,4:1358,5:1446,6:1540,7:1640,8:1747,9:1860,'Repeat':2400},
+ 'ZVEI1 (70 ms)':{0:2400,1:1060,2:1160,3:1270,4:1400,5:1530,6:1670,7:1830,8:2000,9:2200,'Repeat':2600},
+ 'EEA (40 ms)':{0:1981,1:1124,2:1197,3:1275,4:1358,5:1446,6:1540,7:1640,8:1747,9:1860,'Repeat':2400} };
+const SELCAL16={A:312.6,B:346.7,C:384.6,D:426.6,E:473.2,F:524.8,G:582.1,H:645.7,J:716.1,K:794.3,L:881.0,M:977.2,P:1083.9,Q:1202.3,R:1333.5,S:1479.1};
+const ALE_HFN={ '160m':[1996.0],'80m':[3596.0],'60m':[5357.0],'40m':[7102.0,7185.5],'30m':[10145.5],'20m':[14109.0],
+ '17m':[18106.0],'15m':[21096.0],'12m':[24926.0],'10m':[28146.0],'6m':[50140.0],'2m':[144140.0],'70cm':[432140.0] };
+let toolsDone=false;
+function renderTools(){
+  $('#mmsi-go').onclick=()=>{ const r=mmsiDecode($('#mmsi-in').value); const o=$('#mmsi-out'); o.style.display='';
+    o.innerHTML = r.valid ? `<div class="k">${r.mmsi}</div><div class="small" style="margin-top:4px">Category: <b>${r.category}</b><br>MID: <b>${r.mid}</b> · Country: <b>${esc(r.country)}</b></div>`
+                          : `<div class="small bad">${esc(r.error)}</div>`; };
+  if(toolsDone) return; toolsDone=true;
+  // selcall table: rows = digit/label, cols = systems
+  const sys=Object.keys(SELCALL); const labels=[0,1,2,3,4,5,6,7,8,9,'Repeat'];
+  let h='<thead><tr><th>Digit</th>'+sys.map(s=>`<th>${s}</th>`).join('')+'</tr></thead><tbody>';
+  labels.forEach(d=>{ h+=`<tr><td class="mono">${d}</td>`+sys.map(s=>`<td class="mono">${SELCALL[s][d]}</td>`).join('')+'</tr>'; });
+  h+='</tbody>'; $('#selcall-tbl').innerHTML=h;
+  // aero SELCAL note row appended
+  $('#selcall-tbl').insertAdjacentHTML('afterend','<p class="note">Aeronautical SELCAL (ARINC, 16 tones A–S, no I/N/O), dual-tone pairs ~1 s: '+Object.entries(SELCAL16).map(([k,v])=>k+'='+v).join(', ')+' Hz.</p>');
+  // ALE table
+  let a='<thead><tr><th>Band</th><th>Channels (USB, kHz)</th><th>MHz</th></tr></thead><tbody>';
+  Object.entries(ALE_HFN).forEach(([b,ch])=>{ a+=`<tr><td>${b}</td><td class="mono">${ch.map(f=>f.toFixed(1)).join(', ')}</td><td class="mono">${ch.map(f=>(f/1000).toFixed(4)).join(', ')}</td></tr>`; });
+  a+='</tbody>'; $('#ale-tbl').innerHTML=a;
+}
+
+// ---------- theme ----------
+function setFace(f){ if(f==='dark') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme',f);
+  $$('#faceplate button').forEach(b=>b.classList.toggle('on',b.dataset.face===f)); LS.set('e-theme',f); window.isNight=(f==='night'); }
+$$('#faceplate button').forEach(b=>b.onclick=()=>setFace(b.dataset.face));
+setFace(LS.get('e-theme','dark')||'dark');
+
+// ---------- settings ----------
+$('#my-call').value=LS.get('e-mycall',''); $('#my-grid').value=LS.get('e-mygrid','');
+$('#my-ip').value=LS.get('e-myip',''); $('#my-port').value=LS.get('e-myport','8773');
+$('#set-rigctld').value=LS.get('e-rigctld','127.0.0.1:4532'); $('#set-wsjt').value=LS.get('e-wsjt','2237'); $('#set-rigdrift').value=LS.get('e-rigdrift','0');
+
+// Radio / CAT presets — mirrors rf/einstein_radios.py (tested values from Tradewind).
+const RADIOS=[
+  {id:'generic_vox',label:'Generic soundcard + VOX (SignaLink, Easy Digi)',ptt:'VOX',civ:'',baud:'',audio:'USB Audio CODEC',modem:'AFSK1200',note:'Interface keys on audio (VOX). Set TX audio so the radio deviates ~3 kHz (FM) or ALC just moves (SSB).'},
+  {id:'signalink',label:'Tigertronics SignaLink USB',ptt:'VOX',civ:'',baud:'',audio:'USB Audio CODEC',modem:'AFSK1200',note:'SignaLink keys the radio (VOX). DLY ~9 o’clock, TX knob low. Use the jumper/cable for your model.'},
+  {id:'digirig',label:'Digirig Mobile',ptt:'RTS',civ:'',baud:'',audio:'USB PnP Sound Device',modem:'AFSK1200',note:'Audio “USB PnP Sound Device”. PTT = Serial RTS on the Digirig serial port.'},
+  {id:'cm108',label:'CM108/CM119 USB fob (GPIO PTT)',ptt:'CM108',civ:'',baud:'',audio:'USB Audio Device',modem:'AFSK1200',note:'Linux only: PTT device /dev/hidrawN (GPIO3). Grant access via a udev rule.'},
+  {id:'rigctld',label:'Any radio via Hamlib rigctld (CAT PTT + tune)',ptt:'RIGCTLD',civ:'',baud:'',audio:'USB Audio CODEC',rigctld:'127.0.0.1:4532',modem:'OFDM-PRO',note:'Start rigctld first (rigctld -m <model> -r <port> -s <baud>). Einstein keys and tunes through Hamlib.'},
+  {id:'ic9100',label:'Icom IC-9100 (HF/VHF/UHF, USB audio + CI-V)',ptt:'CIV',civ:'7C',baud:'9600',audio:'USB Audio CODEC',modem:'OFDM-PRO',note:'One USB cable = audio + CI-V. DATA MOD = USB, CI-V address 7C, baud 9600. USB-D on HF, FM-D on 2m/70cm. Close other CAT software first.'},
+  {id:'ic705',label:'Icom IC-705 (HF/VHF/UHF, USB audio + CI-V)',ptt:'CIV',civ:'A4',baud:'9600',audio:'USB Audio CODEC',modem:'OFDM-PRO',note:'CI-V address A4. DATA MOD = USB; USB-D on HF, FM-D on 2m/70cm.'},
+  {id:'ic9700',label:'Icom IC-9700 (VHF/UHF/23cm, USB audio + CI-V)',ptt:'CIV',civ:'A2',baud:'9600',audio:'USB Audio CODEC',modem:'OFDM-PROV',note:'CI-V address A2. DATA MOD = USB, FM-D. On FM 2m/70cm you can run the 9 kbps Pro VHF modem.'},
+  {id:'ic7100',label:'Icom IC-7100 (HF/VHF/UHF, USB audio + CI-V)',ptt:'CIV',civ:'88',baud:'9600',audio:'USB Audio CODEC',modem:'OFDM-PRO',note:'CI-V address 88. DATA MOD = USB; USB-D on HF, FM-D on 2m/70cm.'},
+  {id:'ic7300',label:'Icom IC-7300 (HF/6m, USB audio + CI-V)',ptt:'CIV',civ:'94',baud:'19200',audio:'USB Audio CODEC',modem:'OFDM-PRO',note:'CI-V USB baud 19200 (or Auto), address 94. DATA MOD = USB, USB-D.'},
+  {id:'ic7610',label:'Icom IC-7610 (HF/6m, USB audio + CI-V)',ptt:'CIV',civ:'98',baud:'19200',audio:'USB Audio CODEC',modem:'OFDM-PRO',note:'CI-V address 98, baud 19200. DATA MOD = USB, USB-D.'},
+  {id:'ft991a',label:'Yaesu FT-991A (HF/VHF/UHF, USB audio)',ptt:'YAESU_CAT',civ:'',baud:'38400',audio:'USB Audio CODEC',modem:'OFDM-PRO',note:'Yaesu CAT on the “Standard” COM port at the radio’s CAT baud (menu 031, e.g. 38400). DATA-FM on 2m/70cm, DATA-U on HF.'},
+  {id:'ft710',label:'Yaesu FT-710 / FTDX10 / FTDX101 (HF, USB audio)',ptt:'YAESU_CAT',civ:'',baud:'38400',audio:'USB Audio CODEC',modem:'OFDM-PRO',note:'Yaesu CAT on the “Standard” COM port. Select USB data audio, use DATA-U.'},
+  {id:'ft2980',label:'Yaesu FT-2980R (2m FM, mic+speaker via interface)',ptt:'VOX',civ:'',baud:'',audio:'USB Audio CODEC',modem:'AFSK1200',note:'No data jack/CAT. SignaLink (VOX) or Digirig (RTS) on mic + ext-speaker jacks. Keep TX audio low, Low/Mid power.'},
+  {id:'yaesu_ftm',label:'Yaesu FTM-500D / FTM-300D / FTM-200 (DATA jack)',ptt:'VOX',civ:'',baud:'',audio:'USB Audio CODEC',modem:'AFSK1200',note:'Soundcard interface on the rear DATA jack, data-jack speed 1200 bps, radio’s own APRS off.'},
+  {id:'ts590',label:'Kenwood TS-590SG / TS-590S / TS-890S (HF, USB audio)',ptt:'RIGCTLD',civ:'',baud:'115200',audio:'USB Audio CODEC',rigctld:'127.0.0.1:4532',modem:'OFDM-PRO',note:'One USB cable = audio + CAT. Run rigctld for PTT+tune; set data input to USB audio.'},
+  {id:'tmv71',label:'Kenwood TM-V71A / TM-V71E (2m/70cm, DATA jack)',ptt:'VOX',civ:'',baud:'',audio:'USB Audio CODEC',modem:'AFSK1200',note:'6-pin mini-DIN DATA jack with a SignaLink (VOX) or Digirig (RTS). Set data band, 1200 bps.'},
+  {id:'x6100',label:'Xiegu X6100 (HF/6m, USB audio)',ptt:'RIGCTLD',civ:'',baud:'',audio:'USB Audio CODEC',rigctld:'127.0.0.1:4532',modem:'OFDM-STD',note:'Audio + CAT over USB (firmware dependent). Run rigctld with the X6100 model.'},
+  {id:'xiegu_g90',label:'Xiegu G90 / G106 (HF, via DE-19 / Digirig)',ptt:'VOX',civ:'',baud:'',audio:'USB Audio CODEC',modem:'OFDM-STD',note:'No built-in sound card — use DE-19 or Digirig. PTT: VOX, RTS, or rigctld via CI-V.'},
+  {id:'aioc_ht',label:'Radtel/Quansheng/Baofeng HTs (AIOC cable)',ptt:'DTR',civ:'',baud:'',audio:'All-In-One-Cable',modem:'AFSK1200',note:'AIOC cable: audio “All-In-One-Cable”, PTT = DTR. Radio VOX off, TX audio low, low power.'}
+];
+function fillRadio(id,quiet){ const r=RADIOS.find(x=>x.id===id)||RADIOS[0];
+  $('#set-ptt').value=r.ptt; $('#set-civ').value=r.civ||''; $('#set-catbaud').value=r.baud||'';
+  $('#set-audio').value=r.audio||''; $('#set-radiomodem').value=r.modem||'';
+  if(r.rigctld) $('#set-rigctld').value=r.rigctld;
+  $('#radio-note').innerHTML='<b>'+r.label+':</b> '+r.note;
+  if(!quiet) LS.set('e-radio',id); }
+(function(){ const sel=$('#set-radio'); if(!sel) return;
+  RADIOS.forEach(r=>{ const o=document.createElement('option'); o.value=r.id; o.textContent=r.label; sel.appendChild(o); });
+  sel.value=LS.get('e-radio','ic9100');
+  // restore any user-edited CAT fields, else fill from the preset
+  const savedPtt=LS.get('e-ptt',null);
+  fillRadio(sel.value,true);
+  if(savedPtt!==null){ $('#set-ptt').value=savedPtt; $('#set-civ').value=LS.get('e-civ',$('#set-civ').value);
+    $('#set-catbaud').value=LS.get('e-catbaud',$('#set-catbaud').value); $('#set-audio').value=LS.get('e-audio',$('#set-audio').value); }
+  $('#set-catport').value=LS.get('e-catport','');
+  sel.onchange=()=>fillRadio(sel.value);
+})();
+function setupReqMark(){ let ok=false; try{SSP.grid2ll(($('#my-grid').value||'').trim());ok=true;}catch(e){}
+  $('#setup-req').textContent = ok?'' : '· grid square required'; }
+setupReqMark(); $('#my-grid').addEventListener('input',setupReqMark);
+if(!$('#my-ip').value){ $('#my-ip').value='detecting…'; detectIP(); }
+$('#save-settings').onclick=()=>{ const gv=$('#my-grid').value.trim().toUpperCase();
+  try{ SSP.grid2ll(gv); }catch(e){ $('#set-msg').textContent='⚠ enter a valid grid (e.g. GK03)'; return; }
+  LS.set('e-mycall',$('#my-call').value.trim().toUpperCase()); LS.set('e-mygrid',gv);
+  LS.set('e-myip',$('#my-ip').value.trim()); LS.set('e-myport',$('#my-port').value.trim()||'8773');
+  LS.set('e-rigctld',$('#set-rigctld').value.trim()); LS.set('e-wsjt',$('#set-wsjt').value.trim()); LS.set('e-rigdrift',$('#set-rigdrift').value.trim()||'0');
+  if($('#set-radio')) LS.set('e-radio',$('#set-radio').value);
+  LS.set('e-ptt',$('#set-ptt').value.trim()); LS.set('e-civ',$('#set-civ').value.trim());
+  LS.set('e-catbaud',$('#set-catbaud').value.trim()); LS.set('e-catport',$('#set-catport').value.trim());
+  LS.set('e-audio',$('#set-audio').value.trim());
+  $('#set-msg').textContent='Saved ✓'; setupReqMark(); setTimeout(()=>$('#set-msg').textContent='',1500); };
+
+// ---------- new entry ----------
+function utcNow(){ return new Date().toISOString().slice(0,19).replace('T',' '); }
+$('#now-btn').onclick=()=>$('#f-utc').value=utcNow();
+$('#f-utc').value=utcNow();
+function updDxb(){ const d=dxOf($('#f-grid').value); $('#f-dxb').textContent = d?`distance / bearing: ${d.km} km · ${d.brg}° ${compass(d.brg)}`:'distance / bearing: —'; }
+$('#f-grid').addEventListener('input',updDxb);
+$('#f-band').addEventListener('change',()=>{ if(!$('#f-freq').value){ const h=BANDHZ[$('#f-band').value]; if(h&&h!=='14') $('#f-freq').value=h; } });
+function runProp(){
+  const fMHz=bandFreqMHz($('#f-band').value)||parseFloat($('#f-freq').value)||null;
+  const duct=ductAnalysis({sst:num('f-sst'),tair:num('f-temp'),rh:num('f-hum'),p:num('f-baro')});
+  const dop=classifyDoppler(num('f-offset'), fMHz);
+  const fB=braggHz(fMHz);
+  const out=$('#prop-out'); let h='';
+  if(fB!=null) h+=`<div class="k">Sea Bragg Doppler @ ${fMHz} MHz</div><div class="v" style="font-size:18px">±${fB.toFixed(2)} Hz</div>`;
+  if(duct){ const col=duct.like==='High'?'var(--ok)':duct.like==='Moderate'?'var(--accent2)':'var(--muted)';
+    h+=`<div style="margin-top:8px" class="small">Air−sea ΔT <b>${duct.astd}°C</b> · humidity deficit <b>${duct.dq} g/kg</b> · M-grad <b>${duct.dMdh}</b>/m`+
+       `<br>Over-water ducting: <b style="color:${col}">${duct.like}</b> (${duct.mech})`+(duct.edh?` · ~${duct.edh} m evap duct`:'')+
+       (duct.like!=='Low'?` — VHF/UHF enhancement likely`:'')+`</div>`; }
+  if(dop){ const col=dop.sea?'var(--ok)':'var(--muted)';
+    h+=`<div style="margin-top:8px" class="small">Offset after rig-drift (${LS.get('e-rigdrift','0')} Hz) = <b>${dop.resid} Hz</b> vs Bragg ±${dop.fB} → `+
+       `<b style="color:${col}">${dop.sea?'SEA DOPPLER (matches Bragg)':'likely rig drift / not sea'}</b></div>`; }
+  if(!h){ h='<span class="small muted">Enter SST, air temp, humidity (and band/offset) then analyse.</span>'; }
+  out.innerHTML=h; out.style.display='';
+  return {duct,dop,fB};
+}
+$('#calc-prop').onclick=runProp;
+$('#save-entry').onclick=()=>{
+  const call=$('#f-call').value.trim().toUpperCase(); if(!call){ $('#save-msg').textContent='Need a callsign'; return; }
+  const grid=$('#f-grid').value.trim().toUpperCase(); const d=dxOf(grid);
+  const prop=runProp();
+  LOG.unshift({ utc:$('#f-utc').value.trim()||utcNow(), band:$('#f-band').value, mode:$('#f-mode').value, call, grid,
+    km:d?d.km:'', brg:d?d.brg:'', snr:$('#f-snr').value.trim(), freq:$('#f-freq').value.trim(), drift:$('#f-drift').value.trim(),
+    integ:$('#f-integ').value.trim(), ant:$('#f-ant').value.trim(), wind:$('#f-wind').value.trim(), baro:$('#f-baro').value.trim(),
+    rain:$('#f-rain').value.trim(), hum:$('#f-hum').value.trim(), temp:$('#f-temp').value.trim(), sst:$('#f-sst').value.trim(),
+    offset:$('#f-offset').value.trim(), notes:$('#f-notes').value.trim(),
+    duct: prop.duct?prop.duct.like:'', edh: prop.duct?prop.duct.edh:'', astd: prop.duct?prop.duct.astd:'',
+    braggfb: prop.fB?prop.fB.toFixed(2):'', doppler: prop.dop?(prop.dop.sea?'sea':'rig'):'' });
+  saveLog(); ['f-call','f-grid','f-snr','f-drift','f-offset','f-notes'].forEach(id=>$('#'+id).value=''); updDxb();
+  $('#f-utc').value=utcNow(); $('#save-msg').textContent='Logged ✓'; setTimeout(()=>$('#save-msg').textContent='',1500);
 };
-$('#pick').onclick=()=>{ const w=document.querySelector('.map-wrap'); if(w) w.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(()=>map.invalidateSize(),350); $('#pick').textContent='Tap anywhere on the map…'; setTimeout(()=>$('#pick').textContent='📍 Pick on map',2000); };
-$('#clear-dest').onclick=()=>{ dest=null; if(destMarker){map.removeLayer(destMarker);destMarker=null;} if(lineLayer){map.removeLayer(lineLayer);lineLayer=null;} ['distv','eta'].forEach(id=>$('#'+id).textContent='—'); };
 
-// ---- device location: GPS (default) or IP address ----
-let gpsWatch=null;
-function setMe(lat,lon,src){ me={lat,lon};
-  $('#gps-warn').hidden=true; $('#lat').textContent=lat.toFixed(5)+'°'; $('#lon').textContent=lon.toFixed(5)+'°'; $('#grid').textContent=toGrid(lat,lon);
-  $('#fix-src').textContent=src+' · '+new Date().toLocaleTimeString();
-  if(meMarker)meMarker.setLatLng([lat,lon]); else meMarker=L.circleMarker([lat,lon],{radius:8,color:'#fff',weight:2,fillColor:'#36c4ff',fillOpacity:1}).addTo(map).bindTooltip('You');
-  map.setView([lat,lon],Math.max(map.getZoom(),13)); draw(); updateNav(); loadLandmarksThrottled();
-  if(window.SHARE) window.SHARE.updateLocation({lat,lon,grid:toGrid(lat,lon),ts:Date.now()});
+// ---------- import WSJT-X ----------
+// Matches both Band-Activity ("HHMMSS -15 0.2 1575 ~ CQ K1ABC FN42")
+// and ALL.txt ("YYMMDD_HHMMSS 144.174 Rx FT8 -21 0.1 809 CQ VP8ABC IO91")
+function parseDecodes(text, band){
+  const out=[]; const gridRe=/\b([A-R]{2}\d{2}([a-x]{2})?)\b/;
+  text.split(/\r?\n/).forEach(line=>{
+    const l=line.trim(); if(!l) return;
+    const nums=l.match(/-?\d+\.?\d*/g); if(!nums) return;
+    // SNR = first integer in [-30,30]; message = tail after the frequency offset
+    let snr='', dt='', df='', freq='', mode='';
+    const m=l.match(/\b(FT8|FT4|WSPR|FST4W|Q65|JT65|MSK144|JT9)\b/i); if(m) mode=m[1].toUpperCase();
+    const fM=l.match(/\b(\d{2,3}\.\d{3})\b/); if(fM) freq=fM[1];
+    const snrM=l.match(/\s(-?\d{1,2})\s+(-?\d+\.\d+)\s+(\d{1,4})\s/); // SNR dT DF
+    if(snrM){ snr=snrM[1]; dt=snrM[2]; df=snrM[3]; }
+    else { const s=nums.find(n=>Math.abs(+n)<=30 && Number.isInteger(+n)); if(s!==undefined) snr=s; }
+    // callsign + grid from the message text
+    const msg=l.replace(/^.*?(CQ|DE|QRZ)?\s*/,'');
+    let call='', grid='';
+    const g=l.match(gridRe); if(g) grid=g[1];
+    const callM=l.match(/\b([A-Z0-9]{1,3}\d[A-Z0-9]{0,3}[A-Z])\b/g);
+    if(callM){ call=callM.find(c=>c!=='CQ'&&!/^\d/.test(c))||callM[callM.length-1]||''; }
+    if(!call && !grid) return;
+    const d=dxOf(grid);
+    out.push({ utc:utcNow().slice(0,10)+' '+(l.match(/\b(\d{6})\b/)?l.match(/\b(\d{6})\b/)[1].replace(/(\d\d)(\d\d)(\d\d)/,'$1:$2:$3'):utcNow().slice(11)),
+      band, mode:mode||'FT8', call, grid, km:d?d.km:'', brg:d?d.brg:'', snr, freq, drift:df, integ:'', ant:'',wind:'',baro:'',rain:'',hum:'',temp:'', notes:'imported' });
+  });
+  return out;
 }
-function startGps(){ if(!navigator.geolocation){ $('#gps-warn').hidden=false; $('#gps-warn').textContent='This device has no location support.'; return; }
-  $('#gps-warn').hidden=false; $('#gps-warn').textContent='Getting GPS fix…'; if(gpsWatch==null) gpsWatch=navigator.geolocation.watchPosition(onPos,onPosErr,{enableHighAccuracy:true,maximumAge:2000,timeout:20000}); }
-async function useIp(){
-  const b=(CONFIG.relay||'').replace(/\/+$/,''); if(!b||b.includes('YOURNAME')){ alert('IP location uses the relay — set the relay URL in the Share section first.'); return; }
-  $('#fix-src').textContent='Locating by IP…';
-  try{ const j=await (await fetch(b+'/where')).json();
-    if(j.lat!=null&&j.lon!=null){ if(gpsWatch!=null){ navigator.geolocation.clearWatch(gpsWatch); gpsWatch=null; }
-      setMe(j.lat,j.lon,'IP location'+(j.city?(' · '+j.city):'')+' (approx)'); $('#spd').textContent='—'; $('#acc').innerHTML='city-level'; $('#alt').innerHTML='<small>n/a</small>'; }
-    else alert('IP location unavailable from the relay.');
-  }catch(e){ alert('IP location failed — check the relay URL.'); $('#fix-src').textContent=''; }
-}
-function setLocBtns(id){ ['loc-gps','loc-ip','loc-mask'].forEach(x=>{ const b=$('#'+x); if(b) b.classList.toggle('on', x===id); }); }
-$('#loc-gps').onclick=()=>{ setLocBtns('loc-gps'); shareMask=false; startGps(); };
-$('#loc-ip').onclick=()=>{ setLocBtns('loc-ip'); shareMask=false; useIp(); };
-$('#loc-mask') && ($('#loc-mask').onclick=()=>{ setLocBtns('loc-mask'); shareMask=true; startGps(); if(me&&window.SHARE){ const sl={lat:coarse(me.lat),lon:coarse(me.lon)}; window.SHARE.updateLocation({lat:sl.lat,lon:sl.lon,grid:toGrid(sl.lat,sl.lon),acc:1100,ts:Date.now()}); } });
+$('#imp-run').onclick=()=>{ const add=parseDecodes($('#imp-text').value,$('#imp-band').value);
+  if(!add.length){ $('#imp-msg').textContent='No decodes recognised'; return; }
+  LOG=add.concat(LOG); saveLog(); $('#imp-msg').textContent=`Added ${add.length} ✓`; $('#imp-text').value=''; };
 
-// ---------- position ----------
-function fmtSpeed(mps){ if(mps==null) return '—'; const k=mps*3.6; return k.toFixed(k<10?1:0)+' <small>km/h</small> · '+(mps*1.94384).toFixed(0)+' <small>kn</small>'; }
-function onPos(p){ const c=p.coords; me={lat:c.latitude,lon:c.longitude};
-  $('#gps-warn').hidden=true;
-  $('#lat').textContent=c.latitude.toFixed(5)+'°';
-  $('#lon').textContent=c.longitude.toFixed(5)+'°';
-  $('#grid').textContent=toGrid(c.latitude,c.longitude);
-  $('#alt').innerHTML=c.altitude!=null?Math.round(c.altitude)+' <small>m</small>':'<small>no GPS altitude</small>';
-  $('#spd').innerHTML=fmtSpeed(c.speed);
-  $('#acc').innerHTML='±'+Math.round(c.accuracy)+' <small>m</small>';
-  $('#fix-src').textContent='Fix updated '+new Date().toLocaleTimeString()+(c.altitudeAccuracy?(' · altitude ±'+Math.round(c.altitudeAccuracy)+' m'):'');
-  if(meMarker)meMarker.setLatLng([me.lat,me.lon]); else { meMarker=L.circleMarker([me.lat,me.lon],{radius:8,color:'#fff',weight:2,fillColor:'#36c4ff',fillOpacity:1}).addTo(map).bindTooltip('You'); map.setView([me.lat,me.lon],15); }
-  draw(); updateNav(); loadLandmarksThrottled();
-  if (window.SHARE){ const sl = shareMask ? {lat:coarse(me.lat),lon:coarse(me.lon)} : {lat:me.lat,lon:me.lon};
-    window.SHARE.updateLocation({lat:sl.lat,lon:sl.lon,grid:toGrid(sl.lat,sl.lon),alt:shareMask?null:c.altitude,spd:shareMask?null:c.speed,acc:shareMask?1100:c.accuracy,ts:Date.now()}); }
-}
-function onPosErr(e){ $('#gps-warn').hidden=false; $('#gps-warn').textContent='Location unavailable: '+e.message+'. Allow location and try outdoors, or use IP address.'; }
-startGps();   // default to GPS; user can switch to IP
+// ---------- log table + export ----------
+function filtered(){ const b=$('#flt-band').value,m=$('#flt-mode').value;
+  return LOG.filter(e=>(!b||e.band===b)&&(!m||e.mode===m)); }
+function renderLog(){ const tb=$('#log-table tbody'); const rows=filtered();
+  tb.innerHTML = rows.length? rows.map((e,i)=>`<tr>
+    <td class="mono">${esc(e.utc)}</td><td>${esc(e.band.split(' ')[0])}</td><td>${esc(e.mode)}</td>
+    <td class="mono">${esc(e.call)}</td><td class="mono">${esc(e.grid)}</td><td class="mono">${esc(e.km)}</td>
+    <td class="mono">${e.brg!==''?esc(e.brg)+'°':''}</td><td class="mono">${esc(e.snr)}</td><td class="mono">${esc(e.freq)}</td>
+    <td><button class="btn sm" data-del="${LOG.indexOf(e)}">✕</button></td></tr>`).join('')
+    : '<tr><td colspan="10" class="muted small">No entries. Add one under “New entry” or import WSJT-X decodes.</td></tr>';
+  tb.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ LOG.splice(+b.dataset.del,1); saveLog(); renderLog(); }); }
+$('#flt-band').onchange=renderLog; $('#flt-mode').onchange=renderLog;
+$('#clear-log').onclick=()=>{ if(confirm('Delete all log entries?')){ LOG=[]; saveLog(); renderLog(); } };
 
-function draw(){ if(me&&dest){ const pts=[[me.lat,me.lon],[dest.lat,dest.lon]];
-  if(lineLayer)lineLayer.setLatLngs(pts); else lineLayer=L.polyline(pts,{color:'#36c4ff',weight:3,dashArray:'6 6',opacity:.8}).addTo(map); } }
+function download(name,text,type){ const b=new Blob([text],{type:type||'text/plain'}); const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000); }
+function adifBand(b){ const h=+BANDHZ[b]; return h>=1296?'23cm':h>=902?'33cm':h>=432?'70cm':h>=222?'1.25m':h>=144?'2m':h>=50?'6m':'20m'; }
+function exportADIF(){ const rows=filtered(); let s='Einstein ADIF export\n<ADIF_VER:5>3.1.4<PROGRAMID:8>Einstein<EOH>\n';
+  const f=(n,v)=>{ v=String(v==null?'':v); return v?`<${n}:${v.length}>${v}`:''; };
+  rows.forEach(e=>{ const [d,t]=(e.utc||'').split(' '); const qd=(d||'').replace(/-/g,''); const qt=(t||'').replace(/:/g,'').slice(0,6);
+    const cmt=[e.integ&&('int '+e.integ+'s'),e.drift&&('drift '+e.drift+'Hz'),e.offset&&('offset '+e.offset+'Hz'),e.doppler&&('dop:'+e.doppler),e.braggfb&&('Bragg '+e.braggfb+'Hz'),e.ant&&('ant '+e.ant+'°'),e.wind&&('wind '+e.wind),e.baro&&('baro '+e.baro),e.sst&&('SST '+e.sst+'C'),e.astd!==''&&e.astd!=null&&('dT '+e.astd),e.duct&&('duct '+e.duct+(e.edh?'/'+e.edh+'m':'')),e.rain&&('rain '+e.rain),e.hum&&('hum '+e.hum+'%'),e.temp&&('temp '+e.temp+'C'),e.notes].filter(Boolean).join('; ');
+    s+=[f('CALL',e.call),f('GRIDSQUARE',e.grid),f('MODE',e.mode),f('BAND',adifBand(e.band)),f('FREQ',e.freq),f('QSO_DATE',qd),f('TIME_ON',qt),f('APP_EINSTEIN_SNR',e.snr),f('DISTANCE',e.km),f('ANT_AZ',e.brg),f('COMMENT',cmt),'<EOR>'].join('')+'\n'; });
+  download('einstein_log.adi',s,'text/plain'); }
+function exportCSV(){ const rows=filtered(); const cols=['utc','band','mode','call','grid','km','brg','snr','freq','drift','offset','integ','ant','wind','baro','rain','hum','temp','sst','astd','braggfb','doppler','duct','edh','notes'];
+  const esc2=v=>{ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  const s=cols.join(',')+'\n'+rows.map(e=>cols.map(c=>esc2(e[c])).join(',')).join('\n'); download('einstein_log.csv',s,'text/csv'); }
+$('#exp-adif').onclick=exportADIF; $('#exp-csv').onclick=exportCSV;
 
-function updateNav(){ if(!(me&&dest)) return;
-  const d=distKm(me.lat,me.lon,dest.lat,dest.lon);
-  $('#distv').innerHTML=(d<1?Math.round(d*1000)+' <small>m</small>':d.toFixed(d<10?2:1)+' <small>km</small>');
-  // ETA from current speed
-  const spdTxt=$('#spd').textContent, m=spdTxt.match(/([\d.]+)\s*km/); const kmh=m?+m[1]:0;
-  $('#eta').innerHTML = kmh>1 ? fmtEta(d/kmh*3600) : '<small>move to estimate</small>';
-  drawCompass();
-}
-function fmtEta(sec){ if(sec<60)return Math.round(sec)+' <small>s</small>'; const h=Math.floor(sec/3600),mn=Math.round(sec%3600/60); return (h?h+' <small>h</small> ':'')+mn+' <small>min</small>'; }
+// ---------- dashboard ----------
+function renderDash(){ const n=LOG.length; $('#s-total').textContent=n;
+  const dx=LOG.filter(e=>e.km!=='').map(e=>+e.km); $('#s-dx').textContent=dx.length?Math.max(...dx).toLocaleString():'—';
+  const snrs=LOG.filter(e=>e.snr!=='').map(e=>+e.snr).filter(x=>!isNaN(x)); $('#s-snr').textContent=snrs.length?Math.min(...snrs)+' dB':'—';
+  const bands=new Set(LOG.map(e=>e.band)); const modes=new Set(LOG.map(e=>e.mode)); const grids=new Set(LOG.filter(e=>e.grid).map(e=>e.grid.slice(0,4)));
+  $('#s-bands').textContent=bands.size; $('#s-modes').textContent=modes.size; $('#s-grids').textContent=grids.size;
+  $('#by-band').innerHTML=barChart(countBy('band')); $('#by-mode').innerHTML=barChart(countBy('mode'));
+  const rec=LOG.slice(0,8); $('#recent tbody').innerHTML = rec.length? rec.map(e=>`<tr><td class="mono">${esc(e.utc)}</td><td>${esc(e.mode)}</td><td class="mono">${esc(e.call)}</td><td class="mono">${esc(e.grid)}</td><td class="mono">${esc(e.snr)}</td><td class="mono">${e.km!==''?e.km+'km':''}</td></tr>`).join('') : '<tr><td class="muted small">Nothing logged yet.</td></tr>'; }
+function countBy(k){ const m={}; LOG.forEach(e=>{ const v=(e[k]||'?').split(' ')[0]; m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
+function barChart(entries){ if(!entries.length) return '<p class="muted small">No entries yet.</p>'; const max=Math.max(...entries.map(e=>e[1]));
+  return entries.map(([k,v])=>`<div style="margin:6px 0"><div class="small" style="display:flex;justify-content:space-between"><span>${esc(k)}</span><span class="muted">${v}</span></div><div class="bar"><i style="width:${Math.round(100*v/max)}%"></i></div></div>`).join(''); }
 
-// ---------- digital compass (device orientation, smoothed, absolute-only) ----------
-let hs_sin=0, hs_cos=0, headingSmooth=null, haveAbsolute=false, rafPending=false;
-function pushHeading(h){                 // circular low-pass to stop jitter
-  const r=h*Math.PI/180;
-  if(headingSmooth==null){ hs_sin=Math.sin(r); hs_cos=Math.cos(r); }
-  else { const a=0.25; hs_sin=a*Math.sin(r)+(1-a)*hs_sin; hs_cos=a*Math.cos(r)+(1-a)*hs_cos; }
-  headingSmooth=(Math.atan2(hs_sin,hs_cos)*180/Math.PI+360)%360; heading=headingSmooth;
-}
-function scheduleDraw(){ if(rafPending)return; rafPending=true; requestAnimationFrame(()=>{rafPending=false; drawCompass();}); }
-function drawCompass(){   // digital heading only — azimuth the top of the phone points
-  const hdg=headingSmooth;
-  $('#hdg').textContent = hdg==null ? 'tap to enable' : Math.round(hdg)+'° '+compassName(hdg);
-}
-function screenAngle(){ try{ return (screen.orientation&&screen.orientation.angle)||window.orientation||0; }catch(e){ return 0; } }
-function onOrient(e){
-  let h=null, abs=false;
-  if(typeof e.webkitCompassHeading==='number' && !isNaN(e.webkitCompassHeading)){ h=e.webkitCompassHeading; abs=true; }      // iOS: from North
-  else if(e.absolute===true && typeof e.alpha==='number'){ h=(360-e.alpha+screenAngle())%360; abs=true; }                    // Android absolute
-  else if(typeof e.alpha==='number' && !haveAbsolute){ h=(360-e.alpha+screenAngle())%360; }                                  // relative fallback only
-  if(abs) haveAbsolute=true;
-  if(h==null || (haveAbsolute && !abs)) return;      // once we have a true-North source, ignore drifty relative events
-  pushHeading((h+360)%360); scheduleDraw();
-}
-function enableCompass(){
-  if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
-    DeviceOrientationEvent.requestPermission().then(s=>{ if(s==='granted'){ window.addEventListener('deviceorientation',onOrient,true); } }).catch(()=>{});
-  } else { window.addEventListener('deviceorientationabsolute',onOrient,true); window.addEventListener('deviceorientation',onOrient,true); }
-}
-document.body.addEventListener('click',enableCompass,{once:true});
-window.addEventListener('deviceorientationabsolute',onOrient,true);
-
-// ---------- nearby landmarks (OpenStreetMap / Overpass) ----------
-let lmkT=0;
-function loadLandmarksThrottled(){ const now=Date.now(); if(now-lmkT<60000&&lmkT) return; lmkT=now; loadLandmarks(); }
-async function loadLandmarks(){ if(!me) return;
-  const q=`[out:json][timeout:20];(node(around:3000,${me.lat},${me.lon})["place"]["name"];node(around:2500,${me.lat},${me.lon})["natural"]["name"];node(around:2000,${me.lat},${me.lon})["amenity"]["name"];node(around:2500,${me.lat},${me.lon})["tourism"]["name"];);out 60;`;
-  try{
-    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:q});
-    const j=await r.json();
-    const items=(j.elements||[]).filter(e=>e.lat&&e.tags&&e.tags.name).map(e=>({name:e.tags.name,type:e.tags.place||e.tags.natural||e.tags.amenity||e.tags.tourism||'',lat:e.lat,lon:e.lon,d:distKm(me.lat,me.lon,e.lat,e.lon),b:bearing(me.lat,me.lon,e.lat,e.lon)}));
-    const seen=new Set(); const near=items.filter(i=>{const k=i.name;if(seen.has(k))return false;seen.add(k);return true;}).sort((a,b)=>a.d-b.d).slice(0,10);
-    $('#landmarks').innerHTML = near.length? near.map(i=>`<div class="lmk"><span class="b">${Math.round(i.b)}° ${compassName(i.b)}</span><span><b>${esc(i.name)}</b>${i.type?` <span class="muted small">(${esc(i.type)})</span>`:''}<br><span class="muted small">${i.d<1?Math.round(i.d*1000)+' m':i.d.toFixed(1)+' km'} away</span></span></div>`).join('') : '<p class="muted small">No named places found nearby.</p>';
-  }catch(e){ $('#landmarks').innerHTML='<p class="muted small">Couldn’t load landmarks (needs internet). Pulls named places from OpenStreetMap.</p>'; }
-}
-const esc=v=>String(v==null?'':v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
-drawCompass();
-</script>
-
-<script>
-/* ===========================================================================
-   Pigeon live location sharing — fresh WebRTC + AES-256-GCM (no Shelly code)
-   Relay only carries the WebRTC setup; location/video/audio go phone-to-phone.
-   =========================================================================== */
-const CONFIG = { relay: (()=>{ try{ return localStorage.getItem('pigeon-relay'); }catch(e){ return null; } })() || window.__PIGEON_RELAY || 'https://pigeon-relay.macholder67.workers.dev' };
-
-const SHARE = (function(){
-  let pc=null, dc=null, role=null, room=null, key=null, cursor=0, pollT=null, pending=[], remoteSet=false, cbs={}, localStream=null, lastLoc=null, media={}, locT=null, offered=false, vTx=null, aTx=null, reqT=null, approving=false, lastOfferAt=0;
-  const DIAG=[]; function diag(s){ const line=new Date().toLocaleTimeString()+' · '+s; DIAG.push(line); if(DIAG.length>60)DIAG.shift(); window.__pigeonDiag=DIAG; try{console.log('[pigeon]',s);}catch(e){} try{ document.querySelectorAll('.diag-log').forEach(el=>{ el.textContent=DIAG.slice(-14).join('\n'); el.scrollTop=el.scrollHeight; }); }catch(e){} cbs.onDiag&&cbs.onDiag(line); }
-  const relay = ()=> (CONFIG.relay||'').replace(/\/+$/,'');
-  const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  const unb64u = s => { s=s.replace(/-/g,'+').replace(/_/g,'/'); const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return u; };
-  const importKey = raw => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt','decrypt']);
-  async function enc(obj){ const iv=crypto.getRandomValues(new Uint8Array(12)); const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj))); const out=new Uint8Array(12+ct.byteLength); out.set(iv); out.set(new Uint8Array(ct),12); return out.buffer; }
-  async function dec(buf){ const u=new Uint8Array(buf); const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(0,12)},key,u.slice(12)); return JSON.parse(new TextDecoder().decode(pt)); }
-
-  const privRelayOnly=()=>{ try{ return localStorage.getItem('pigeon-relayonly')==='1'; }catch(e){ return false; } };
-  const customTurn=()=>{ try{ const t=JSON.parse(localStorage.getItem('pigeon-turn')||'null'); return (t&&t.urls)?t:null; }catch(e){ return null; } };
-  async function iceConf(){ const pol = privRelayOnly()?'relay':'all'; let servers;
-    try{ const r=await fetch(relay()+'/ice'); const j=await r.json(); servers=j.iceServers||[]; }
-    catch(e){ servers=[{urls:'stun:stun.l.google.com:19302'}]; }
-    const ct=customTurn(); if(ct) servers=[ct, ...servers];     // your own TURN (e.g. metered.ca) takes priority
-    return {iceServers:servers, iceTransportPolicy:pol}; }
-  async function post(type,data){ try{ await fetch(relay()+'/room/'+room,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({from:role,type,data})}); }catch(e){} }
-  let pollTick=0;
-  function startPoll(){ stopPoll(); pollTick=0; pollT=setInterval(async()=>{ try{ const r=await fetch(relay()+'/room/'+room+'?role='+role+'&since='+cursor); const j=await r.json(); const got=(j.msgs||[]); for(const m of got){ cursor=Math.max(cursor,m.seq); await handle(m); }
-    if(role==='host' && !pc){ pollTick++; if(pollTick%8===1) diag('waiting for a viewer to open the link… (room '+(room||'').slice(0,8)+')'); }
-  }catch(e){ pollTick++; if(pollTick%5===1) diag('cannot reach relay '+relay()+' — '+(e.message||'network error')+' (VPN/Private DNS/connection?)'); } }, 1000); }
-  function stopPoll(){ if(pollT)clearInterval(pollT); pollT=null; }
-
-  async function handle(m){
-    if(m.type==='request' && role==='host'){ cbs.onRequest && cbs.onRequest(m.data||{});   // sender already consented by sending the link; viewer just accepts
-      const st = pc ? pc.connectionState : null;
-      // Re-answer if we have no live link: never connected, a dead pc, OR a pc stuck in new/connecting past 6s (a prior attempt that never completed).
-      const stale = !pc || st==='failed' || st==='disconnected' || st==='closed' || (st!=='connected' && (Date.now()-lastOfferAt>6000));
-      if(!approving && stale){ approve().catch(e=>diag('approve failed: '+e.message)); }
-      else { diag('request ignored (state '+(st||'none')+')'); } }
-    else if(m.type==='offer' && role==='guest'){ if(!pc){ await onOffer(m.data); } else { await onRenegotiate(m.data); } }
-    else if(m.type==='answer' && role==='host'){ try{ await pc.setRemoteDescription(m.data); remoteSet=true; diag('got answer — linking'); }catch(e){} }
-    // 'ice' messages are no longer used (non-trickle) — ignored if an old client sends them.
-  }
-  // Non-trickle ICE: wait for candidate gathering to finish, then send ONE offer/answer
-  // with all candidates baked into the SDP. No per-candidate relay messages (saves KV writes),
-  // and it lets us stop polling the relay entirely once the P2P link is up.
-  function waitIce(){ return new Promise(res=>{ if(pc.iceGatheringState==='complete') return res();
-    const t=setTimeout(()=>{ try{pc.removeEventListener('icegatheringstatechange',chk);}catch(e){} res(); }, 3000);
-    function chk(){ if(pc.iceGatheringState==='complete'){ clearTimeout(t); pc.removeEventListener('icegatheringstatechange',chk); res(); } }
-    pc.addEventListener('icegatheringstatechange',chk); }); }
-  function wirePc(){ pc.onicecandidate=()=>{};              // candidates travel inside the SDP (non-trickle)
-    pc.onconnectionstatechange=()=>{ diag('connection: '+pc.connectionState);
-      if(pc.connectionState==='connected'){ stopPoll(); diag('P2P connected — relay polling stopped'); }
-      else if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){ if(!pollT){ startPoll(); diag('link dropped — polling resumed'); } }
-      cbs.onState&&cbs.onState(pc.connectionState); };
-    pc.oniceconnectionstatechange=()=>diag('ice: '+pc.iceConnectionState);
-    pc.ontrack=e=>{ const tr=e.track, kind=tr?tr.kind:'?'; diag('remote track: '+kind); cbs.onStream&&cbs.onStream(e.streams[0]);
-      if(tr){ const upd=()=>{ const on=!tr.muted&&tr.readyState==='live'; diag(kind+(on?' live':' idle')); cbs.onMedia&&cbs.onMedia(kind,on); };
-        tr.onunmute=upd; tr.onmute=upd; tr.onended=()=>cbs.onMedia&&cbs.onMedia(kind,false); upd(); } }; }
-  function wireDc(){ dc.binaryType='arraybuffer';
-    dc.onopen=()=>{ cbs.onState&&cbs.onState('linked');
-      if(role==='host'){ if(media.pic) sendPic(media.pic); sendLoc(lastLoc); clearInterval(locT); locT=setInterval(()=>sendLoc(lastLoc),2000); } };   // live resend so it's never missed
-    dc.onclose=()=>clearInterval(locT);
-    dc.onmessage=async e=>{ try{ const o=await dec(e.data); if(o.t==='loc') cbs.onLocation&&cbs.onLocation(o.loc); else if(o.t==='pic') cbs.onPic&&cbs.onPic(o.pic); }catch(err){} }; }
-  async function sendLoc(loc){ if(dc&&dc.readyState==='open'){ try{ dc.send(await enc({t:'loc',loc})); }catch(e){} } }
-  async function sendPic(p){ if(dc&&dc.readyState==='open'){ try{ dc.send(await enc({t:'pic',pic:p})); }catch(e){} } }
-
-  async function startShare(opts, callbacks){
-    if(!relay()||relay().includes('YOURNAME')) throw new Error('Set the Pigeon relay URL first (deploy the relay, then Settings).');
-    role='host'; cbs=callbacks||{}; media=opts||{}; offered=false;
-    room=b64u(crypto.getRandomValues(new Uint8Array(9)));
-    const rawKey=crypto.getRandomValues(new Uint8Array(32)); key=await importKey(rawKey);
-    cursor=0; remoteSet=false; pending=[]; startPoll();
-    diag('sharing live — room '+room.slice(0,8)+'. Send THIS link; the viewer must open this exact one.');
-    const relayTag=b64u(new TextEncoder().encode(relay()));    // put the relay in the link so the viewer needs no setup
-    return { room, link: relay()+'/#view='+room+'.'+b64u(rawKey)+'~'+relayTag };   // link opens the viewer served by the relay (a real, shareable URL)
-  }
-  async function getStream(m){ return cbs.getMedia ? await cbs.getMedia({video:!!m.video,audio:!!m.audio})
-                                                     : await navigator.mediaDevices.getUserMedia({video:!!m.video,audio:!!m.audio}); }
-  // Reconcile the outgoing video/audio tracks WITHOUT renegotiation (m-lines pre-exist from the first offer).
-  async function applyLocalMedia(){
-    if(!pc||!vTx||!aTx) return;
-    let stream=null;
-    if(media.video||media.audio){ try{ stream=await getStream(media); }catch(e){ diag('getUserMedia blocked'); cbs.onState&&cbs.onState('camera/mic blocked — sharing location only'); media.video=false; media.audio=false; } }
-    localStream=stream;
-    const vTrack=stream?stream.getVideoTracks()[0]||null:null;
-    const aTrack=stream?stream.getAudioTracks()[0]||null:null;
-    try{ await vTx.sender.replaceTrack(media.video?vTrack:null); }catch(e){ diag('video replaceTrack failed: '+e.message); }
-    try{ await aTx.sender.replaceTrack(media.audio?aTrack:null); }catch(e){ diag('audio replaceTrack failed: '+e.message); }
-    diag('feeds set → video:'+(!!media.video)+' audio:'+(!!media.audio));
-  }
-  async function approve(){
-    approving=true; lastOfferAt=Date.now(); diag('viewer accepted — building connection');
-    try{ if(pc){ try{pc.close();}catch(e){} } if(localStream){ /* keep preview stream */ }
-    pc=new RTCPeerConnection(await iceConf()); wirePc();
-    vTx=pc.addTransceiver('video',{direction:'sendrecv'});   // pre-negotiate the m-lines so feeds can start
-    aTx=pc.addTransceiver('audio',{direction:'sendrecv'});   // later with zero renegotiation (robust on mobile)
-    await applyLocalMedia();
-    dc=pc.createDataChannel('loc'); wireDc();
-    const offer=await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce(); remoteSet=false; await post('offer',pc.localDescription); diag('sent offer (location + feed lanes)');
-    }finally{ approving=false; }
-  }
-  async function view(r,kB64,callbacks){ role='guest'; cbs=callbacks||{}; room=r; key=await importKey(unb64u(kB64)); cursor=0; remoteSet=false; pending=[]; startPoll();
-    diag('requesting connection — room '+room.slice(0,8)); await post('request',{name:'A Pigeon user'});
-    // Keep knocking until the sharer answers — covers the sharer being briefly backgrounded or the link opened before they're ready.
-    clearInterval(reqT); let tries=0;
-    reqT=setInterval(()=>{ if(remoteSet || (pc&&pc.connectionState==='connected') || tries++>45){ clearInterval(reqT); reqT=null; return; }
-      diag('no answer yet — re-requesting ('+tries+')'); post('request',{name:'A Pigeon user'}); }, 4000); }
-  async function onOffer(offer){ diag('got offer — answering'); if(reqT){ clearInterval(reqT); reqT=null; } pc=new RTCPeerConnection(await iceConf()); wirePc();
-    pc.ondatachannel=e=>{ dc=e.channel; wireDc(); };
-    await pc.setRemoteDescription(offer); remoteSet=true;
-    // Two-way: adopt the pre-negotiated lanes so this side can ALSO send its own camera/mic.
-    pc.getTransceivers().forEach(t=>{ const k=t.receiver&&t.receiver.track&&t.receiver.track.kind; try{ t.direction='sendrecv'; }catch(e){} if(k==='video')vTx=t; else if(k==='audio')aTx=t; });
-    await applyLocalMedia();
-    const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce(); await post('answer',pc.localDescription); diag('sent answer'); }
-  // Media on/off no longer renegotiates (tracks swap on pre-negotiated lanes), so no extra offers.
-  async function onRenegotiate(offer){ try{ await pc.setRemoteDescription(offer); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await waitIce(); await post('answer',pc.localDescription); }catch(e){} }
-  // Sharer turns a live video/audio feed on or off at any time (location keeps flowing either way).
-  async function setMedia(m2){
-    media=Object.assign({},media,m2||{});
-    if(!pc){ return media; }                               // not linked yet — applied when the link is opened
-    await applyLocalMedia();                               // just swaps tracks on the existing m-lines — no renegotiation
-    return media;
-  }
-  function updateLocation(loc){ lastLoc=loc; sendLoc(loc); }
-  function stop(){ stopPoll(); clearInterval(locT); if(reqT){clearInterval(reqT);reqT=null;} try{dc&&dc.close();}catch(e){} try{pc&&pc.close();}catch(e){} if(localStream)localStream.getTracks().forEach(t=>t.stop()); pc=dc=null; role=null; vTx=aTx=null; offered=false; diag('stopped'); }
-
-  /* ---------- Paired direct calls (the Door): a fixed, pre-shared room+key, so NO link is sent at call time ---------- */
-  async function callPaired(roomId, rawKey, mediaOpts, callbacks){   // caller: offer straight into the shared room
-    stop(); role='host'; cbs=callbacks||{}; media=mediaOpts||{}; offered=true; approving=false;
-    room=roomId; key=await importKey(rawKey); cursor=0; remoteSet=false;
-    startPoll(); diag('calling — room '+room.slice(0,8));
-    await approve();
-  }
-  async function answerPaired(roomId, rawKey, offer, sinceSeq, callbacks){   // callee: answer an incoming offer on a shared room
-    stop(); role='guest'; cbs=callbacks||{};
-    room=roomId; key=await importKey(rawKey); cursor=sinceSeq||0; remoteSet=false;
-    startPoll(); diag('answering — room '+room.slice(0,8));
-    await onOffer(offer);
-  }
-  // When the app returns to the foreground, make sure we're still polling (mobile suspends background timers).
-  if(typeof document!=='undefined') document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible' && role && (!pc || pc.connectionState!=='connected')){ if(!pollT){ startPoll(); diag('back in foreground — polling resumed'); } } });
-  return { startShare, approve, view, updateLocation, setMedia, stop, callPaired, answerPaired, importKey, b64u, unb64u };
-})();
-window.SHARE = SHARE;
-
-/* ---------- share / view UI ---------- */
-(function(){
-  const $=s=>document.querySelector(s);
-  let viewMarker=null, myPhoto=null, live=false, vOn=false, aOn=false;
-  function reflect(){ const vb=$('#t-video'), ab=$('#t-audio'); if(!vb||!ab)return; vb.classList.toggle('on',vOn); ab.classList.toggle('on',aOn); vb.setAttribute('aria-pressed',vOn); ab.setAttribute('aria-pressed',aOn); }
-  function feedLabel(){ return 'Sharing your location'+(vOn?' + live video':'')+(aOn?' + live audio':'')+'.'; }
-
-  /* ---- self-preview: the sharer sees their own camera/mic so a feed clearly works ---- */
-  let preview=null, micCtx=null, micRAF=null;
-  async function reconcilePreview(){
-    const wantV=vOn, wantA=aOn;
-    if(!wantV && !wantA){ dropPreview(); return null; }
-    if(!preview) preview=new MediaStream();
-    // video
-    const hasV=preview.getVideoTracks().length>0;
-    if(wantV && !hasV){ const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); s.getVideoTracks().forEach(t=>preview.addTrack(t)); }
-    if(!wantV && hasV){ preview.getVideoTracks().forEach(t=>{ t.stop(); preview.removeTrack(t); }); }
-    // audio
-    const hasA=preview.getAudioTracks().length>0;
-    if(wantA && !hasA){ const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getAudioTracks().forEach(t=>preview.addTrack(t)); }
-    if(!wantA && hasA){ preview.getAudioTracks().forEach(t=>{ t.stop(); preview.removeTrack(t); }); stopMeter(); }
-    renderPreview();
-    return preview;
-  }
-  function renderPreview(){
-    const box=$('#self-feed'), v=$('#self-video'), m=$('#self-mic');
-    if(!box) return;
-    const hasV=preview&&preview.getVideoTracks().length>0, hasA=preview&&preview.getAudioTracks().length>0;
-    box.hidden=!(hasV||hasA);
-    if(hasV){ v.style.display=''; if(v.srcObject!==preview) v.srcObject=preview; } else { v.style.display='none'; v.srcObject=null; }
-    if(hasA){ m.style.display='flex'; startMeter(); } else { m.style.display='none'; }
-  }
-  function startMeter(){
-    if(micCtx||!preview) return;
-    try{ micCtx=new (window.AudioContext||window.webkitAudioContext)(); const src=micCtx.createMediaStreamSource(preview);
-      const an=micCtx.createAnalyser(); an.fftSize=256; src.connect(an); const data=new Uint8Array(an.frequencyBinCount);
-      const bar=$('#mic-bar'); const loop=()=>{ an.getByteFrequencyData(data); let s=0; for(const x of data)s+=x; const lvl=Math.min(100,(s/data.length)/128*100*2); if(bar)bar.style.width=lvl+'%'; micRAF=requestAnimationFrame(loop); }; loop();
-    }catch(e){}
-  }
-  function stopMeter(){ if(micRAF)cancelAnimationFrame(micRAF); micRAF=null; if(micCtx){ try{micCtx.close();}catch(e){} micCtx=null; } const bar=$('#mic-bar'); if(bar)bar.style.width='0'; }
-  function dropPreview(){ stopMeter(); if(preview){ preview.getTracks().forEach(t=>t.stop()); preview=null; } const box=$('#self-feed'); if(box)box.hidden=true; const v=$('#self-video'); if(v){v.style.display='none';v.srcObject=null;} }
-  function compressImage(file){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ const s=Math.min(1,160/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.7)); }; img.onerror=()=>res(null); img.src=URL.createObjectURL(file); }); }
-  const pin=$('#share-photo'); if(pin) pin.onchange=async()=>{ const f=pin.files[0]; if(!f)return; myPhoto=await compressImage(f); $('#photo-state').textContent='Photo added ✓'; };
-  function iconFor(pic){ return (pic&&typeof L!=='undefined')?L.divIcon({className:'',html:`<img src="${pic}" style="width:46px;height:46px;border-radius:50%;border:3px solid #36c4ff;object-fit:cover">`,iconSize:[46,46],iconAnchor:[23,23]}):undefined; }
-  async function begin(opts){
-    try{
-      const s=await SHARE.startShare(Object.assign({pic:myPhoto},opts),{
-        getMedia:(m)=>reconcilePreview(),                    // share the SAME stream the preview uses (one camera open)
-        onRequest:(info)=>{ $('#share-reqs').innerHTML='<p class="small muted">'+esc(info.name||'Someone')+' opened your link — connecting…</p>'; },
-        onStream:(stream)=>{ const v=$('#share-remote-video'); if(v && v.srcObject!==stream){ v.srcObject=stream; v.muted=false; v.play&&v.play().catch(()=>{}); } },
-        onMedia:(kind,on)=>{ if(kind==='video'){ const v=$('#share-remote-video'); if(v) v.style.display=on?'':'none'; }
-          if(kind==='audio'){ const a=$('#share-remote-audio'); if(a) a.style.display=on?'':'none'; } },
-        onState:(st)=>{ $('#share-state').textContent = st==='linked'?'Connected — live.':st==='connected'?'Linked.':'Status: '+st; }
-      });
-      live=true;
-      $('#share-box').hidden=false; $('#share-stop').hidden=false; $('#share-loc').hidden=true;
-      $('#share-link').textContent=s.link; $('#share-state').textContent='Waiting for someone to open the link… '+feedLabel();
-      $('#share-copy').onclick=()=>{ navigator.clipboard?.writeText(s.link).then(()=>$('#share-state').textContent='Link copied — send it to one person.',()=>{}); };
-    }catch(e){ alert(e.message); }
-  }
-  // relay URL config (needed once, after you deploy the relay worker)
-  (function(){ const inp=$('#relay-url'); if(!inp) return;
-    if(CONFIG.relay && !CONFIG.relay.includes('YOURNAME')){ inp.value=CONFIG.relay; $('#relay-row').style.opacity='.6'; }
-    $('#relay-save').onclick=()=>{ const v=inp.value.trim(); if(!v) return; CONFIG.relay=v; try{localStorage.setItem('pigeon-relay',v);}catch(e){} $('#relay-row').style.opacity='.6'; $('#share-state')&&($('#share-state').textContent='Relay saved.'); };
-  })();
-  // privacy: relay-only (TURN) WebRTC so the real IP isn't exposed to the peer
-  (function(){ const b=$('#relay-only'); if(!b) return; const st=$('#relayonly-state');
-    const on=()=>{ try{ return localStorage.getItem('pigeon-relayonly')==='1'; }catch(e){ return false; } };
-    const render=()=>{ const v=on(); b.classList.toggle('on',v); b.setAttribute('aria-pressed',v?'true':'false'); if(st) st.textContent=v?'On — real IP hidden via relay':'Off — direct connection may expose your IP'; };
-    b.onclick=()=>{ try{ localStorage.setItem('pigeon-relayonly', on()?'0':'1'); }catch(e){} render(); };
-    render();
-  })();
-  // custom TURN server (e.g. metered.ca) so relay-only is reliable
-  (function(){ const u=$('#turn-url'); if(!u) return; const us=$('#turn-user'), cr=$('#turn-cred'), st=$('#turn-state');
-    try{ const t=JSON.parse(localStorage.getItem('pigeon-turn')||'null'); if(t){ u.value=t.urls||''; us.value=t.username||''; cr.value=t.credential||''; if(st) st.textContent='Custom TURN active'; } }catch(e){}
-    $('#turn-save').onclick=()=>{ const urls=u.value.trim();
-      if(!urls){ try{localStorage.removeItem('pigeon-turn');}catch(e){} st.textContent='Cleared — using default TURN.'; return; }
-      const t={urls, username:us.value.trim(), credential:cr.value.trim()}; try{localStorage.setItem('pigeon-turn',JSON.stringify(t));}catch(e){} st.textContent='TURN saved ✓'; };
-  })();
-  async function toggleFeed(which){
-    if(which==='v'){ vOn=!vOn; } else { aOn=!aOn; }
-    reflect();
-    try{ await reconcilePreview(); }                        // show your own feed right away
-    catch(e){ if(which==='v')vOn=false; else aOn=false; reflect(); alert('Camera/microphone blocked. Allow the permission in your phone settings, then try again.'); return; }
-    await SHARE.setMedia({video:vOn,audio:aOn});             // send on the live link if connected (host OR guest); no-op before connect
-    const ss=$('#share-state'); if(ss && !location.hash.startsWith('#view=')) ss.textContent = live?feedLabel():((vOn||aOn)?('Ready — '+feedLabel()+' Tap “Share location” to send your link.'):'');
-  }
-  $('#t-video').onclick=()=>toggleFeed('v');
-  $('#t-audio').onclick=()=>toggleFeed('a');
-  $('#share-loc').onclick=()=>begin({video:vOn,audio:aOn});
-  $('#share-stop').onclick=()=>{ SHARE.stop(); live=false; vOn=false; aOn=false; reflect(); dropPreview();
-    $('#share-box').hidden=true; $('#share-stop').hidden=true; $('#share-loc').hidden=false; $('#share-reqs').innerHTML=''; $('#share-state').textContent='Location sharing stopped.'; };
-
-  // Viewer: opened a share link  (#view=room.key~relay)
-  const h=location.hash.match(/^#view=([A-Za-z0-9_-]{6,64})\.([A-Za-z0-9_-]+)(?:~([A-Za-z0-9_-]+))?$/);
-  if(h){
-    if(h[3]){ try{ const s=h[3].replace(/-/g,'+').replace(/_/g,'/'); const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); CONFIG.relay=new TextDecoder().decode(u); }catch(e){} }
-    let senderPic=null;
-    $('#share-card').querySelector('h2').textContent='Live location & video call';
-    const rr=$('#relay-row'); if(rr) rr.style.display='none';
-    // Viewer keeps the feed buttons (two-way): they can send their own camera/mic back.
-    $('#share-loc').hidden=true; const fh=$('#feed-hint'); if(fh) fh.textContent='Turn on Video feed or Audio feed to send your own camera/mic to the other person. Location is shared either way.';
-    $('#view-box').hidden=false;
-    $('#view-title').innerHTML='<button class="btn go" id="view-accept">✅ Accept &amp; view on map</button>';
-    $('#view-accept').onclick=()=>{
-      $('#view-title').textContent='Live location'; $('#view-pos').textContent='connecting…';
-      $('#view-feedback').textContent='Waiting for the other person to respond — keep both Pigeon apps open.';
-      try{ document.querySelector('.map-wrap').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
-      SHARE.view(h[1],h[2],{
-        getMedia:(m)=>reconcilePreview(),                    // two-way: send this phone's own camera/mic
-        onState:(st)=>{ $('#view-state').textContent='Status: '+(st==='linked'?'connected':st==='connected'?'connected':st); },
-        onStream:(stream)=>{ const v=$('#view-video'); if(v.srcObject!==stream){ v.srcObject=stream; v.muted=false; v.play&&v.play().catch(()=>{}); } },
-        onMedia:(kind,on)=>{ if(kind==='video'){ const v=$('#view-video'); v.style.display=on?'':'none'; }
-          if(kind==='audio'){ const a=$('#view-audio'); if(a) a.style.display=on?'':'none'; }
-          const none=$('#view-video').style.display==='none' && (!$('#view-audio')||$('#view-audio').style.display==='none');
-          const fb=$('#view-feedback'); if(fb) fb.textContent = none?'Location only — the sharer hasn’t turned on a video or audio feed.':('Receiving'+($('#view-video').style.display!=='none'?' video':'')+($('#view-audio')&&$('#view-audio').style.display!=='none'?' audio':'')+' from the sharer.'); },
-        onPic:(pic)=>{ senderPic=pic;
-          $('#view-title').innerHTML=`<img src="${pic}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;vertical-align:middle;border:2px solid var(--accent)"> Live location`;
-          if(viewMarker) viewMarker.setIcon(iconFor(pic)); },
-        onLocation:(loc)=>{
-          $('#view-pos').textContent = loc.lat.toFixed(5)+', '+loc.lon.toFixed(5)+(loc.grid?('  '+loc.grid):'');
-          if(typeof L!=='undefined'){ const ic=iconFor(senderPic);
-            if(viewMarker) viewMarker.setLatLng([loc.lat,loc.lon]); else { viewMarker=L.marker([loc.lat,loc.lon], ic?{icon:ic}:undefined).addTo(map).bindTooltip('Shared location'); map.setView([loc.lat,loc.lon],15); } }
-          if(me){ const b=bearing(me.lat,me.lon,loc.lat,loc.lon), d=distKm(me.lat,me.lon,loc.lat,loc.lon);
-            $('#view-brg').textContent=Math.round(b)+'° '+compassName(b)+' · '+(d<1?Math.round(d*1000)+' m':d.toFixed(1)+' km'); }
-        }
-      });
-    };
-  }
-})();
-</script>
-<script>
-/* ---------- Pigeon Keys / the Door: paired direct calls (no link at call time) ---------- */
-(function(){
-  if(!window.SHARE) return;
-  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-  const b64u=SHARE.b64u, unb64u=SHARE.unb64u;
-  const esc2=v=>String(v==null?'':v).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
-  const relay=()=> (CONFIG.relay||'').replace(/\/+$/,'');
-  const load=()=>{ try{ return JSON.parse(localStorage.getItem('pigeon-contacts')||'[]'); }catch(e){ return []; } };
-  const save=(c)=>{ try{ localStorage.setItem('pigeon-contacts',JSON.stringify(c)); }catch(e){} };
-
-  // tabs
-  $$('#door-card .st-tabs button').forEach(b=>b.onclick=()=>{ $$('#door-card .st-tabs button').forEach(x=>x.classList.toggle('on',x===b)); const t=b.dataset.doortab;
-    $('#door-contacts').style.display=t==='contacts'?'':'none'; $('#door-create').style.display=t==='create'?'':'none'; $('#door-add').style.display=t==='add'?'':'none'; });
-
-  // Pigeon Code = base64url of [room 9B][key 32B][name…]
-  function makeCode(name){ const roomB=crypto.getRandomValues(new Uint8Array(9)), keyB=crypto.getRandomValues(new Uint8Array(32)), nameB=new TextEncoder().encode(name||''); const all=new Uint8Array(41+nameB.length); all.set(roomB,0); all.set(keyB,9); all.set(nameB,41); return { code:b64u(all), room:b64u(roomB), key:b64u(keyB) }; }
-  function parseCode(code){ const all=unb64u(code.trim()); if(all.length<41) throw new Error('bad'); return { room:b64u(all.slice(0,9)), key:b64u(all.slice(9,41)), name:new TextDecoder().decode(all.slice(41)) }; }
-
-  function renderContacts(){ const c=load(), list=$('#contact-list'); if(!list) return;
-    if(!c.length){ list.innerHTML='<p class="small muted">No contacts yet. <b>Create a code</b> to give someone, or <b>Add a code</b> you were sent.</p>'; return; }
-    list.innerHTML=c.map((x,i)=>'<div class="st-carrier"><span style="flex:1"><b>'+esc2(x.name)+'</b><br><span class="small muted">room '+x.room.slice(0,8)+'</span></span><button class="btn sm go" data-call="'+i+'">📞 Call</button> <button class="btn sm" data-del="'+i+'">🗑</button></div>').join('');
-    list.querySelectorAll('[data-call]').forEach(b=>b.onclick=()=>startCall(load()[+b.dataset.call]));
-    list.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const c2=load(); c2.splice(+b.dataset.del,1); save(c2); renderContacts(); }); }
-
-  $('#create-code').onclick=()=>{ const name=($('#create-name').value||'').trim()||'Contact'; const m=makeCode(name); const c=load(); c.push({name,room:m.room,key:m.key}); save(c);
-    $('#create-out').innerHTML='<p class="small" style="color:var(--ok,#39d98a)">Send this Pigeon Code to '+esc2(name)+' by WhatsApp/text — they paste it under “Add a code”. (Safe to leave the app now.)</p><div class="out" style="word-break:break-all">'+m.code+'</div>';
-    const copy=document.createElement('button'); copy.className='btn sm'; copy.textContent='Copy code'; copy.onclick=()=>{ navigator.clipboard?.writeText(m.code); copy.textContent='Copied ✓'; }; $('#create-out').appendChild(copy);
-    $('#create-name').value=''; renderContacts(); };
-
-  $('#add-save').onclick=()=>{ try{ const p=parseCode($('#add-code').value); const name=($('#add-name').value||'').trim()||p.name||'Contact'; const c=load(); c.push({name,room:p.room,key:p.key}); save(c); $('#add-state').textContent='Added ✓'; $('#add-code').value=''; $('#add-name').value=''; renderContacts(); }catch(e){ $('#add-state').textContent='That doesn’t look like a Pigeon Code'; } };
-
-  /* ---- call media (own preview) ---- */
-  let callV=false, callA=false, callPreview=null, inCall=false;
-  async function callReconcile(){ if(!callV&&!callA){ if(callPreview){callPreview.getTracks().forEach(t=>t.stop());callPreview=null;} const sv=$('#call-self-video'); sv.style.display='none'; sv.srcObject=null; return null; }
-    if(!callPreview) callPreview=new MediaStream();
-    const hasV=callPreview.getVideoTracks().length>0;
-    if(callV&&!hasV){ const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}); s.getVideoTracks().forEach(t=>callPreview.addTrack(t)); }
-    if(!callV&&hasV){ callPreview.getVideoTracks().forEach(t=>{t.stop();callPreview.removeTrack(t);}); }
-    const hasA=callPreview.getAudioTracks().length>0;
-    if(callA&&!hasA){ const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getAudioTracks().forEach(t=>callPreview.addTrack(t)); }
-    if(!callA&&hasA){ callPreview.getAudioTracks().forEach(t=>{t.stop();callPreview.removeTrack(t);}); }
-    const sv=$('#call-self-video'); if(callPreview.getVideoTracks().length){ sv.style.display=''; if(sv.srcObject!==callPreview) sv.srcObject=callPreview; } else { sv.style.display='none'; sv.srcObject=null; }
-    return callPreview; }
-  function reflectCall(){ $('#call-video').classList.toggle('on',callV); $('#call-audio').classList.toggle('on',callA); }
-  function callCbs(name){ return {
-    getMedia:()=>callReconcile(),
-    onState:(st)=>{ const e=$('#call-state'); if(e) e.textContent = (st==='connected'||st==='linked')?'Connected — live with '+name+'.':st==='failed'?'Connection failed — tap Call again.':('…'+st); },
-    onStream:(stream)=>{ const v=$('#call-remote-video'); if(v && v.srcObject!==stream){ v.srcObject=stream; v.muted=false; v.play&&v.play().catch(()=>{}); } },
-    onMedia:(kind,on)=>{ if(kind==='video'){ const v=$('#call-remote-video'); if(v) v.style.display=on?'':'none'; } if(kind==='audio'){ const a=$('#call-remote-audio'); if(a) a.style.display=on?'':'none'; } }
-  }; }
-  function openCallBox(title){ $('#call-box').hidden=false; $('#call-title').textContent=title; $('#call-state').textContent='connecting…'; $('#call-remote-video').style.display='none'; $('#call-remote-audio').style.display='none'; try{ $('#call-box').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} }
-
-  async function startCall(ct){ if(!ct) return; stopAvail(); inCall=true; callA=true; callV=false; reflectCall();
-    openCallBox('Calling '+ct.name+'…');
-    try{ await callReconcile(); }catch(e){ callA=false; reflectCall(); }
-    await SHARE.callPaired(ct.room, unb64u(ct.key), {video:callV,audio:callA}, callCbs(ct.name));
-    $('#call-title').textContent='Call with '+ct.name; }
-
-  async function answer(ct, offer, seq){ stopAvail(); inCall=true; callA=true; callV=false; reflectCall();
-    openCallBox('Call with '+ct.name);
-    try{ await callReconcile(); }catch(e){ callA=false; reflectCall(); }
-    await SHARE.answerPaired(ct.room, unb64u(ct.key), offer, seq, callCbs(ct.name)); }
-
-  $('#call-video').onclick=async()=>{ callV=!callV; reflectCall(); try{ await callReconcile(); await SHARE.setMedia({video:callV,audio:callA}); }catch(e){ callV=false; reflectCall(); alert('Camera blocked — allow it in phone settings.'); } };
-  $('#call-audio').onclick=async()=>{ callA=!callA; reflectCall(); try{ await callReconcile(); await SHARE.setMedia({video:callV,audio:callA}); }catch(e){ callA=false; reflectCall(); alert('Microphone blocked — allow it in phone settings.'); } };
-  $('#call-hangup').onclick=()=>{ SHARE.stop(); endCall(); };
-  function endCall(){ inCall=false; if(callPreview){callPreview.getTracks().forEach(t=>t.stop());callPreview=null;} callV=callA=false; const cb=$('#call-box'); if(cb)cb.hidden=true; $('#call-remote-video').srcObject=null; $('#call-self-video').srcObject=null; if(availWanted) startAvail(); }
-
-  /* ---- "Available for calls": poll every contact's room for an incoming offer ---- */
-  let availWanted=false, availT=null; const availCur={};
-  function startAvail(){ const c=load(); stopTimer(); availWanted=true; $('#avail-toggle').classList.add('on'); $('#avail-toggle').setAttribute('aria-pressed','true'); $('#avail-state').textContent=c.length?'Listening for calls…':'No contacts yet';
-    availT=setInterval(async()=>{ if(inCall) return; const contacts=load();
-      for(const ct of contacts){ try{ const since=availCur[ct.room]||0; const r=await fetch(relay()+'/room/'+ct.room+'?role=guest&since='+since); const j=await r.json();
-        for(const m of (j.msgs||[])){ availCur[ct.room]=Math.max(availCur[ct.room]||0,m.seq); if(m.type==='offer'){ incomingCall(ct,m.data,m.seq); return; } } }catch(e){} } }, 2500); }
-  function stopTimer(){ if(availT){clearInterval(availT);availT=null;} }
-  function stopAvail(){ availWanted=false; stopTimer(); $('#avail-toggle').classList.remove('on'); $('#avail-toggle').setAttribute('aria-pressed','false'); $('#avail-state').textContent='Off'; }
-  $('#avail-toggle').onclick=()=>{ if(availWanted) stopAvail(); else startAvail(); };
-
-  function incomingCall(ct, offer, seq){ if(inCall) return; stopTimer();
-    const box=$('#incoming'); box.hidden=false;
-    box.innerHTML='<div class="warn" style="background:#0e2a1a;border-color:#1f6b3f;color:#bfeccd">📞 Incoming call from <b>'+esc2(ct.name)+'</b></div>';
-    const row=document.createElement('div'); row.className='row';
-    const a=document.createElement('button'); a.className='btn go sm'; a.textContent='✅ Accept'; a.onclick=()=>{ box.hidden=true; box.innerHTML=''; answer(ct,offer,seq); };
-    const d=document.createElement('button'); d.className='btn sm'; d.textContent='✖ Decline'; d.onclick=()=>{ box.hidden=true; box.innerHTML=''; if(availWanted) startAvail(); };
-    row.appendChild(a); row.appendChild(d); box.appendChild(row); }
-
-  renderContacts();
-})();
-</script>
-<script>
-/* ---------- Stealth (PLUMAGE) module ---------- */
-(function(){
-  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-  if(!window.STEALTH) return;
-  $$('#stealth-card .st-tabs button').forEach(b=>b.onclick=()=>{ $$('#stealth-card .st-tabs button').forEach(x=>x.classList.toggle('on',x===b));
-    $('#st-hide').style.display=b.dataset.sttab==='hide'?'':'none'; $('#st-reveal').style.display=b.dataset.sttab==='reveal'?'':'none'; });
-  $$('#stealth-card .st-chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
-  const SENT=["Thanks for the update, I'll review and reply tomorrow.","Great catching up — let's sync next week.","Here are the photos from the weekend!","Reminder: the meeting moved to 3pm.","All set here, shout if you need anything."];
-  function noiseImg(minBytes){ const px=Math.ceil((4+(minBytes||1))*8/3)+64; const W=Math.min(4096,Math.max(96,Math.ceil(Math.sqrt(px)))), H=Math.ceil(px/W)+2;
-    const c=document.createElement('canvas'); c.width=W;c.height=H; const x=c.getContext('2d'),id=x.createImageData(W,H); for(let i=0;i<id.data.length;i+=4){id.data[i]=Math.random()*255;id.data[i+1]=Math.random()*255;id.data[i+2]=Math.random()*255;id.data[i+3]=255;} x.putImageData(id,0,0); return c.toDataURL('image/png'); }
-  function toneWav(minBytes){ const fs=16000,n=Math.max(fs*2,(4+(minBytes||1))*8+16000),buf=new ArrayBuffer(44+n*2),dv=new DataView(buf),w=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
-    w(0,'RIFF');dv.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,fs,true);dv.setUint32(28,fs*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);w(36,'data');dv.setUint32(40,n*2,true);
-    for(let i=0;i<n;i++)dv.setInt16(44+i*2,Math.sin(2*Math.PI*440*i/fs)*8000,true); return URL.createObjectURL(new Blob([buf],{type:'audio/wav'})); }
-  function cover(t,need){ if(t==='image')return{type:'image',url:noiseImg(need),name:'picture'}; if(t==='audio')return{type:'audio',url:toneWav(need),name:'audio'}; return{type:'text',url:SENT[Math.floor(Math.random()*SENT.length)],name:'note'}; }
-  $('#st-scatter').onclick=async()=>{
-    const out=$('#st-out'); out.innerHTML=''; const pass=$('#st-pass').value, msg=$('#st-msg').value, types=$$('#stealth-card .st-chip.on').map(c=>c.dataset.type);
-    if(!pass||!msg){ out.innerHTML='<p class="small" style="color:var(--bad)">Enter a message and pass-phrase.</p>'; return; }
-    if(!types.length){ out.innerHTML='<p class="small" style="color:var(--bad)">Pick at least one carrier.</p>'; return; }
-    try{ $('#st-scatter').disabled=true; $('#st-scatter').textContent='Scattering…';
-      const need=Math.ceil((STEALTH.utf8(msg).length+44)/types.length)+18;   // auto-size covers to the shard
-      const outs=await STEALTH.scatter(STEALTH.utf8(msg), pass, types.map(t=>cover(t,need)));
-      $('#st-scatter').disabled=false; $('#st-scatter').textContent='🪶 Scatter';
-      const ic={image:'🖼️',audio:'🎵',text:'📝'}; out.innerHTML='<p class="small" style="color:var(--ok,#39d98a)">Send ALL '+outs.length+' files + the pass-phrase.</p>';
-      outs.forEach(o=>{ const u=URL.createObjectURL(o.blob),d=document.createElement('div'); d.className='st-carrier';
-        d.innerHTML=`<span>${ic[o.type]}</span><span style="flex:1;overflow-wrap:anywhere">${o.filename} <span class="muted small">(${(o.blob.size/1024).toFixed(1)} KB)</span></span>`;
-        const a=document.createElement('a'); a.href=u; a.download=o.filename; a.className='btn sm'; a.textContent='Save'; d.appendChild(a); out.appendChild(d); });
-    }catch(e){ $('#st-scatter').disabled=false; $('#st-scatter').textContent='🪶 Scatter'; out.innerHTML='<p class="small" style="color:var(--bad)">'+e.message+'</p>'; }
-  };
-  const tOf=n=>{n=n.toLowerCase(); return /\.(png|bmp|gif)$/.test(n)?'image':/\.wav$/.test(n)?'audio':/\.txt$/.test(n)?'text':'video';};
-  $('#st-reveal-btn').onclick=async()=>{
-    const out=$('#st-rout'); out.innerHTML=''; const files=[...$('#st-files').files], pass=$('#st-rpass').value;
-    if(!files.length||!pass){ out.innerHTML='<p class="small" style="color:var(--bad)">Add all carrier files and the pass-phrase.</p>'; return; }
-    try{ $('#st-reveal-btn').disabled=true; $('#st-reveal-btn').textContent='Revealing…';
-      const bytes=await STEALTH.gather(files.map(f=>({type:tOf(f.name),file:f})), pass);
-      $('#st-reveal-btn').disabled=false; $('#st-reveal-btn').textContent='🔓 Reveal';
-      out.innerHTML='<p class="small" style="color:var(--ok,#39d98a)">Recovered:</p><div class="stat" style="margin-top:6px"><div class="v" style="white-space:pre-wrap;word-break:break-word;font-size:13px">'+STEALTH.fromUtf8(bytes).replace(/</g,'&lt;')+'</div></div>';
-    }catch(e){ $('#st-reveal-btn').disabled=false; $('#st-reveal-btn').textContent='🔓 Reveal'; out.innerHTML='<p class="small" style="color:var(--bad)">Could not reveal — check every carrier is added and the pass-phrase is right.</p>'; }
-  };
-})();
-</script>
-<script>
-/* Native (Capacitor) permission bootstrap — no-op on the web/artifact build.
-   Asks Android/iOS for location (and camera for optional video sharing) so the
-   page's navigator.geolocation / getUserMedia / compass work in the app WebView. */
-(function(){
-  try{
-    if(!window.Capacitor || typeof Capacitor.isNativePlatform!=='function' || !Capacitor.isNativePlatform()) return;
-    var P = Capacitor.Plugins || {};
-    var ask = function(){
-      try{ P.Geolocation && P.Geolocation.requestPermissions && P.Geolocation.requestPermissions(); }catch(e){}
-    };
-    document.addEventListener('deviceready', ask);
-    ask();
-    // Camera/mic is requested only when the user turns on video/audio sharing.
-    window.__pigeonAskCamera = function(){
-      try{ P.Camera && P.Camera.requestPermissions && P.Camera.requestPermissions({permissions:['camera']}); }catch(e){}
-    };
-  }catch(e){}
-})();
+renderDash();
 </script>
 </body>
 </html>
