@@ -20,6 +20,19 @@ over 15+ years, and interoperability matters.
 - **Dashboard** — totals, best DX, weakest SNR, by-band and by-mode breakdowns.
 - **Export** — ADIF (for your main logbook) and CSV. Everything on-device.
 
+## Propagation intelligence (v1.1 — first in its class)
+- **Sea-surface-temperature → ducting prediction.** Enter SST, air temp, humidity and
+  pressure; Einstein computes the **evaporation duct height**, air–sea ΔT, the modified-
+  refractivity gradient and a **ducting/inversion likelihood** — predicting VHF/UHF
+  over-water openings (evaporation ducts over warm seas; surface inversions when warm
+  air sits over a cooler sea).
+- **Sea-Doppler vs rig-drift discriminator.** Enter the measured frequency offset;
+  Einstein subtracts your **rig reference drift** (Settings) and tests the residual
+  against the band's **ocean Bragg Doppler** (±0.38 Hz at HF … ±2.1 Hz at 70 cm),
+  labelling a decode **sea Doppler** or **likely rig drift** — so you can actually tell
+  ocean scatter from oscillator wander. Keep rig drift ≪ fB with a GPSDO/OCXO.
+- The same physics is in `rf/evap_duct.m` and `rf/drift_discriminator.{py,m}`.
+
 ## Planned (desktop helper — needs raw sockets)
 Live capture over **WSJT-X's UDP broadcast**, **rigctld (Hamlib) CAT control** for
 IC-9100 / FT-991A / FT-710 / Yaesu SDRs and other 2020-era rigs, and **PSK Reporter**

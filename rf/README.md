@@ -174,6 +174,14 @@ faster symbols, and per-symbol Doppler/Bragg tracking. That's the OSM R&D step.
 - **`measure_fading.py`** — AWGN + Watterson HF threshold sweeps on the real decoder.
 - **`ldpc_compare.py`** — convolutional-vs-LDPC coding-gain comparison (self-contained LDPC).
 - **`ocean_scatter.py`** — ocean Bragg-Doppler channel model + HOMER threshold on it.
+- **`drift_discriminator.py`** / **`.m`** — oscillator-drift tracking + removal, then a
+  sea-Doppler-vs-rig-drift test on the residual (symmetric Bragg lines). Measured: it
+  recovers the drift rate to ~0.01 Hz/s and flags sea Doppler (Bragg score 30–40)
+  vs rig drift (score ~0.4). The corrective measure that lets you hunt sub-2 Hz sea
+  Doppler with a drifting rig — pair it with a GPSDO/OCXO so rig drift ≪ fB.
+- **`evap_duct.m`** — over-water evaporation/surface-duct refractivity model: modified
+  refractivity M(z), evaporation duct height, inversion flag, from bulk marine weather.
+  Predicts VHF/UHF over-water openings (the same model is built into Einstein).
 
 ## How it fits Pigeon's two location sources
 

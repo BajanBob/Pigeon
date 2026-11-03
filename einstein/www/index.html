@@ -125,8 +125,14 @@
     <div class="grid3">
       <div><label>Rain (mm/h)</label><input id="f-rain" type="text" placeholder="0"></div>
       <div><label>Humidity (%)</label><input id="f-hum" type="text" placeholder="78"></div>
-      <div><label>Temp (°C)</label><input id="f-temp" type="text" placeholder="27"></div>
+      <div><label>Air temp (°C)</label><input id="f-temp" type="text" placeholder="27"></div>
     </div>
+    <div class="grid3">
+      <div><label>Sea surface temp (°C)</label><input id="f-sst" type="text" placeholder="28"></div>
+      <div><label>Measured freq offset (Hz)</label><input id="f-offset" type="text" placeholder="+1.2"></div>
+      <div style="align-self:end"><button class="btn sm" id="calc-prop" type="button" style="width:100%">Analyse propagation</button></div>
+    </div>
+    <div id="prop-out" class="stat" style="margin-top:10px;display:none"></div>
     <label>Notes</label><textarea id="f-notes" placeholder="FEC, repeats, Q65 submode, EME window, troposcatter path…" style="font-family:var(--body);min-height:60px"></textarea>
     <div class="row"><button class="btn go" id="save-entry">Save entry</button><button class="btn sm" id="now-btn">Set UTC now</button><span class="small muted" id="save-msg"></span></div>
   </div>
@@ -179,6 +185,9 @@
       <div><label>rigctld host:port (Hamlib)</label><input id="set-rigctld" type="text" placeholder="127.0.0.1:4532"></div>
       <div><label>WSJT-X UDP port</label><input id="set-wsjt" type="text" placeholder="2237"></div>
     </div>
+    <label>Rig reference drift (Hz) — your known oscillator offset (GPSDO/OCXO calibration)</label>
+    <input id="set-rigdrift" type="text" placeholder="0.0">
+    <p class="note">The drift classifier subtracts this from the measured offset before testing for the sea Bragg Doppler — so a disciplined reference lets Einstein tell <b>sea Doppler from rig drift</b>.</p>
     <p class="note">Saved for the desktop helper that will talk to your IC-9100 / FT-991A / FT-710 / SDRs via Hamlib and capture WSJT-X decodes live. Not active in this build.</p>
   </div>
   <div class="card">
@@ -218,6 +227,49 @@ function compass(b){ return ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW"
 function dxOf(grid){ const mg=gridToLatLon($('#my-grid').value||LS.get('e-mygrid','')); const tg=gridToLatLon(grid);
   if(!mg||!tg) return null; return {km:Math.round(haversine(mg,tg)), brg:Math.round(bearing(mg,tg))}; }
 
+// ---------- propagation physics (AI-assisted, Claude) ----------
+const C_=299792458, G_=9.81;
+function bandFreqMHz(band){ const m=(band||'').match(/(\d+(?:\.\d+)?)\s*MHz/); return m?parseFloat(m[1]):null; }
+function braggHz(fMHz){ if(!fMHz) return null; const L=C_/(fMHz*1e6), lo=L/2; const v=Math.sqrt(G_*lo/(2*Math.PI)); return 2*v/L; }
+// saturation vapor pressure (hPa), T in C
+function esat(T){ return 6.112*Math.exp(17.62*T/(243.12+T)); }
+// refractivity N from T(C), P(hPa), vapor pressure e(hPa)
+function refractivity(T,P,e){ const TK=T+273.15; return 77.6*P/TK + 3.73e5*e/(TK*TK); }
+// specific humidity (g/kg) from vapor pressure e(hPa), pressure p(hPa)
+function spechum(e,p){ return 0.622*e/(p-0.378*e)*1000; }
+// Over-water ducting from SST, air temp, humidity, pressure. Two mechanisms:
+//  (1) EVAPORATION duct — moist saturated sea surface vs drier air aloft (specific-
+//      humidity deficit); strongest over warm seas, amplified when unstable.
+//  (2) SURFACE-BASED duct / INVERSION — warm dry air over a cooler sea (air-sea ΔT>0).
+// Both trap VHF/UHF over water. We report an indicative evaporation duct height, the
+// air-sea ΔT, the modified-refractivity gradient, and an overall likelihood.
+function ductAnalysis({sst,tair,rh,p}){
+  p=p||1013; if(sst==null||tair==null||rh==null) return null;
+  const eSurf=0.98*esat(sst), eAir=(rh/100)*esat(tair);
+  const qSurf=spechum(eSurf,p), qAir=spechum(eAir,p);
+  const dq=Math.max(0,qSurf-qAir);              // humidity deficit driving evaporation duct
+  const astd=tair-sst;                          // >0 warm air over cool sea (stable/inversion)
+  const stab=Math.max(0.5,Math.min(1.6,1+0.08*(-astd))); // unstable (astd<0) amplifies evap duct
+  let edh=Math.round(Math.max(0,Math.min(40, 2+2.2*dq*stab)));  // indicative evap duct height (m)
+  // modified-refractivity gradient over the first 10 m (auxiliary)
+  const dMdh=((refractivity(tair,p,eAir)+0.157*10)-(refractivity(sst,p,eSurf)))/10;
+  const inversion = astd>1.5;                   // warm air aloft -> surface-based duct
+  let like='Low';
+  if(edh>15 || (inversion&&astd>3)) like='High';
+  else if(edh>6 || inversion) like='Moderate';
+  return { edh, astd:+astd.toFixed(1), dMdh:+dMdh.toFixed(2), dq:+dq.toFixed(1), like,
+           mech: inversion?'surface inversion':(edh>6?'evaporation duct':'weak'),
+           superref: dMdh<0.079 };
+}
+function classifyDoppler(offsetHz, fMHz){
+  const fB=braggHz(fMHz); if(fB==null||offsetHz==null) return null;
+  const rig=parseFloat(LS.get('e-rigdrift','0'))||0;
+  const resid=offsetHz-rig; const tol=Math.max(0.3, fB*0.35);
+  const sea=Math.abs(Math.abs(resid)-fB)<=tol;
+  return { fB:+fB.toFixed(2), resid:+resid.toFixed(2), sea };
+}
+function num(id){ const v=parseFloat(($('#'+id).value||'').replace(/[^\d.\-]/g,'')); return isNaN(v)?null:v; }
+
 // ---------- state ----------
 let LOG = LS.get('e-log',[]);
 function saveLog(){ LS.set('e-log',LOG); }
@@ -240,9 +292,9 @@ if(LS.get('e-theme','')) document.documentElement.setAttribute('data-theme','lig
 
 // ---------- settings ----------
 $('#my-call').value=LS.get('e-mycall',''); $('#my-grid').value=LS.get('e-mygrid','');
-$('#set-rigctld').value=LS.get('e-rigctld','127.0.0.1:4532'); $('#set-wsjt').value=LS.get('e-wsjt','2237');
+$('#set-rigctld').value=LS.get('e-rigctld','127.0.0.1:4532'); $('#set-wsjt').value=LS.get('e-wsjt','2237'); $('#set-rigdrift').value=LS.get('e-rigdrift','0');
 $('#save-settings').onclick=()=>{ LS.set('e-mycall',$('#my-call').value.trim().toUpperCase()); LS.set('e-mygrid',$('#my-grid').value.trim().toUpperCase());
-  LS.set('e-rigctld',$('#set-rigctld').value.trim()); LS.set('e-wsjt',$('#set-wsjt').value.trim()); $('#set-msg').textContent='Saved ✓'; setTimeout(()=>$('#set-msg').textContent='',1500); };
+  LS.set('e-rigctld',$('#set-rigctld').value.trim()); LS.set('e-wsjt',$('#set-wsjt').value.trim()); LS.set('e-rigdrift',$('#set-rigdrift').value.trim()||'0'); $('#set-msg').textContent='Saved ✓'; setTimeout(()=>$('#set-msg').textContent='',1500); };
 
 // ---------- new entry ----------
 function utcNow(){ return new Date().toISOString().slice(0,19).replace('T',' '); }
@@ -251,14 +303,37 @@ $('#f-utc').value=utcNow();
 function updDxb(){ const d=dxOf($('#f-grid').value); $('#f-dxb').textContent = d?`distance / bearing: ${d.km} km · ${d.brg}° ${compass(d.brg)}`:'distance / bearing: —'; }
 $('#f-grid').addEventListener('input',updDxb);
 $('#f-band').addEventListener('change',()=>{ if(!$('#f-freq').value){ const h=BANDHZ[$('#f-band').value]; if(h&&h!=='14') $('#f-freq').value=h; } });
+function runProp(){
+  const fMHz=bandFreqMHz($('#f-band').value)||parseFloat($('#f-freq').value)||null;
+  const duct=ductAnalysis({sst:num('f-sst'),tair:num('f-temp'),rh:num('f-hum'),p:num('f-baro')});
+  const dop=classifyDoppler(num('f-offset'), fMHz);
+  const fB=braggHz(fMHz);
+  const out=$('#prop-out'); let h='';
+  if(fB!=null) h+=`<div class="k">Sea Bragg Doppler @ ${fMHz} MHz</div><div class="v" style="font-size:18px">±${fB.toFixed(2)} Hz</div>`;
+  if(duct){ const col=duct.like==='High'?'var(--ok)':duct.like==='Moderate'?'var(--accent2)':'var(--muted)';
+    h+=`<div style="margin-top:8px" class="small">Air−sea ΔT <b>${duct.astd}°C</b> · humidity deficit <b>${duct.dq} g/kg</b> · M-grad <b>${duct.dMdh}</b>/m`+
+       `<br>Over-water ducting: <b style="color:${col}">${duct.like}</b> (${duct.mech})`+(duct.edh?` · ~${duct.edh} m evap duct`:'')+
+       (duct.like!=='Low'?` — VHF/UHF enhancement likely`:'')+`</div>`; }
+  if(dop){ const col=dop.sea?'var(--ok)':'var(--muted)';
+    h+=`<div style="margin-top:8px" class="small">Offset after rig-drift (${LS.get('e-rigdrift','0')} Hz) = <b>${dop.resid} Hz</b> vs Bragg ±${dop.fB} → `+
+       `<b style="color:${col}">${dop.sea?'SEA DOPPLER (matches Bragg)':'likely rig drift / not sea'}</b></div>`; }
+  if(!h){ h='<span class="small muted">Enter SST, air temp, humidity (and band/offset) then analyse.</span>'; }
+  out.innerHTML=h; out.style.display='';
+  return {duct,dop,fB};
+}
+$('#calc-prop').onclick=runProp;
 $('#save-entry').onclick=()=>{
   const call=$('#f-call').value.trim().toUpperCase(); if(!call){ $('#save-msg').textContent='Need a callsign'; return; }
   const grid=$('#f-grid').value.trim().toUpperCase(); const d=dxOf(grid);
+  const prop=runProp();
   LOG.unshift({ utc:$('#f-utc').value.trim()||utcNow(), band:$('#f-band').value, mode:$('#f-mode').value, call, grid,
     km:d?d.km:'', brg:d?d.brg:'', snr:$('#f-snr').value.trim(), freq:$('#f-freq').value.trim(), drift:$('#f-drift').value.trim(),
     integ:$('#f-integ').value.trim(), ant:$('#f-ant').value.trim(), wind:$('#f-wind').value.trim(), baro:$('#f-baro').value.trim(),
-    rain:$('#f-rain').value.trim(), hum:$('#f-hum').value.trim(), temp:$('#f-temp').value.trim(), notes:$('#f-notes').value.trim() });
-  saveLog(); ['f-call','f-grid','f-snr','f-drift','f-notes'].forEach(id=>$('#'+id).value=''); updDxb();
+    rain:$('#f-rain').value.trim(), hum:$('#f-hum').value.trim(), temp:$('#f-temp').value.trim(), sst:$('#f-sst').value.trim(),
+    offset:$('#f-offset').value.trim(), notes:$('#f-notes').value.trim(),
+    duct: prop.duct?prop.duct.like:'', edh: prop.duct?prop.duct.edh:'', astd: prop.duct?prop.duct.astd:'',
+    braggfb: prop.fB?prop.fB.toFixed(2):'', doppler: prop.dop?(prop.dop.sea?'sea':'rig'):'' });
+  saveLog(); ['f-call','f-grid','f-snr','f-drift','f-offset','f-notes'].forEach(id=>$('#'+id).value=''); updDxb();
   $('#f-utc').value=utcNow(); $('#save-msg').textContent='Logged ✓'; setTimeout(()=>$('#save-msg').textContent='',1500);
 };
 
@@ -314,10 +389,10 @@ function adifBand(b){ const h=+BANDHZ[b]; return h>=1296?'23cm':h>=902?'33cm':h>
 function exportADIF(){ const rows=filtered(); let s='Einstein ADIF export\n<ADIF_VER:5>3.1.4<PROGRAMID:8>Einstein<EOH>\n';
   const f=(n,v)=>{ v=String(v==null?'':v); return v?`<${n}:${v.length}>${v}`:''; };
   rows.forEach(e=>{ const [d,t]=(e.utc||'').split(' '); const qd=(d||'').replace(/-/g,''); const qt=(t||'').replace(/:/g,'').slice(0,6);
-    const cmt=[e.integ&&('int '+e.integ+'s'),e.drift&&('drift '+e.drift+'Hz'),e.ant&&('ant '+e.ant+'°'),e.wind&&('wind '+e.wind),e.baro&&('baro '+e.baro),e.rain&&('rain '+e.rain),e.hum&&('hum '+e.hum+'%'),e.temp&&('temp '+e.temp+'C'),e.notes].filter(Boolean).join('; ');
+    const cmt=[e.integ&&('int '+e.integ+'s'),e.drift&&('drift '+e.drift+'Hz'),e.offset&&('offset '+e.offset+'Hz'),e.doppler&&('dop:'+e.doppler),e.braggfb&&('Bragg '+e.braggfb+'Hz'),e.ant&&('ant '+e.ant+'°'),e.wind&&('wind '+e.wind),e.baro&&('baro '+e.baro),e.sst&&('SST '+e.sst+'C'),e.astd!==''&&e.astd!=null&&('dT '+e.astd),e.duct&&('duct '+e.duct+(e.edh?'/'+e.edh+'m':'')),e.rain&&('rain '+e.rain),e.hum&&('hum '+e.hum+'%'),e.temp&&('temp '+e.temp+'C'),e.notes].filter(Boolean).join('; ');
     s+=[f('CALL',e.call),f('GRIDSQUARE',e.grid),f('MODE',e.mode),f('BAND',adifBand(e.band)),f('FREQ',e.freq),f('QSO_DATE',qd),f('TIME_ON',qt),f('APP_EINSTEIN_SNR',e.snr),f('DISTANCE',e.km),f('ANT_AZ',e.brg),f('COMMENT',cmt),'<EOR>'].join('')+'\n'; });
   download('einstein_log.adi',s,'text/plain'); }
-function exportCSV(){ const rows=filtered(); const cols=['utc','band','mode','call','grid','km','brg','snr','freq','drift','integ','ant','wind','baro','rain','hum','temp','notes'];
+function exportCSV(){ const rows=filtered(); const cols=['utc','band','mode','call','grid','km','brg','snr','freq','drift','offset','integ','ant','wind','baro','rain','hum','temp','sst','astd','braggfb','doppler','duct','edh','notes'];
   const esc2=v=>{ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
   const s=cols.join(',')+'\n'+rows.map(e=>cols.map(c=>esc2(e[c])).join(',')).join('\n'); download('einstein_log.csv',s,'text/csv'); }
 $('#exp-adif').onclick=exportADIF; $('#exp-csv').onclick=exportCSV;
