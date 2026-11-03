@@ -59,6 +59,7 @@
   <button data-tab="new">New entry</button>
   <button data-tab="log">Log</button>
   <button data-tab="import">Import</button>
+  <button data-tab="tools">Tools</button>
   <button data-tab="settings">Settings</button>
 </div>
 
@@ -165,6 +166,27 @@
     <textarea id="imp-text" placeholder="140000  -15  0.2  1575 ~  CQ K1ABC FN42&#10;000000_120000   144.174 Rx FT8    -21  0.1  809 CQ VP8ABC IO91"></textarea>
     <div class="row"><button class="btn go" id="imp-run">Parse &amp; add</button><span class="small muted" id="imp-msg"></span></div>
     <p class="note">Live capture over WSJT-X's UDP broadcast, rigctld (Hamlib) CAT control, and PSK Reporter spotting need raw network sockets — those run in the <b>desktop (Windows/Linux)</b> build's helper and are the next phase; the log, analysis and import here work on every platform.</p>
+  </div>
+</section>
+
+<!-- ===== TOOLS ===== -->
+<section id="t-tools" style="display:none">
+  <div class="card">
+    <h2>MMSI decoder (ITU-R M.585)</h2>
+    <label>MMSI (9 digits)</label>
+    <div class="row"><input id="mmsi-in" type="text" placeholder="314123456" style="flex:1;min-width:0"><button class="btn go sm" id="mmsi-go">Decode</button></div>
+    <div id="mmsi-out" class="stat" style="margin-top:10px;display:none"></div>
+  </div>
+  <div class="card">
+    <h2>Selcall tone systems</h2>
+    <p class="small muted">Two-tone-sequential / dual-tone selective calling used by HF/VHF data terminals (Codan, Barrett, marine) and aviation. Reference tone tables (Hz).</p>
+    <div class="scroll"><table id="selcall-tbl"></table></div>
+    <p class="note">A <b>repeat</b> tone is sent when two adjacent digits are equal. Encode/decode is implemented in <code>rf/selcall.py</code>.</p>
+  </div>
+  <div class="card">
+    <h2>International ALE channels (HFLINK HFN, USB kHz)</h2>
+    <p class="small muted">De-facto international amateur ALE calling channels. Region-dependent — verify your band plan and licence.</p>
+    <div class="scroll"><table id="ale-tbl"></table></div>
   </div>
 </section>
 
@@ -282,8 +304,54 @@ fillSel($('#flt-band'),BANDS,'All bands'); fillSel($('#flt-mode'),MODES,'All mod
 
 // ---------- tabs ----------
 $$('#tabs button').forEach(b=>b.onclick=()=>{ $$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
-  ['dash','new','log','import','settings'].forEach(t=>$('#t-'+t).style.display = t===b.dataset.tab?'':'none');
-  if(b.dataset.tab==='dash') renderDash(); if(b.dataset.tab==='log') renderLog(); });
+  ['dash','new','log','import','tools','settings'].forEach(t=>$('#t-'+t).style.display = t===b.dataset.tab?'':'none');
+  if(b.dataset.tab==='dash') renderDash(); if(b.dataset.tab==='log') renderLog(); if(b.dataset.tab==='tools') renderTools(); });
+
+// ---------- Tools: MMSI decoder, Selcall reference, ALE channels ----------
+const MID={ "201":"Albania","203":"Austria","205":"Belgium","211":"Germany","224":"Spain","226":"France",
+ "232":"United Kingdom","233":"United Kingdom","234":"United Kingdom","235":"United Kingdom","244":"Netherlands",
+ "247":"Italy","257":"Norway","265":"Sweden","273":"Russia","303":"Alaska (USA)","338":"USA","366":"USA","367":"USA",
+ "316":"Canada","309":"Bahamas","314":"Barbados","339":"Jamaica","343":"St Lucia","347":"St Vincent","345":"Mexico",
+ "351":"Panama","375":"St Kitts & Nevis","379":"US Virgin Is","431":"Japan","440":"South Korea","503":"Australia",
+ "512":"New Zealand","563":"Singapore","710":"Brazil","725":"Chile","775":"Venezuela" };
+function midCountry(m){ return MID[m]||('MID '+m+' (not in table)'); }
+function mmsiDecode(s){ s=(s||'').trim();
+  if(!/^\d{9}$/.test(s)) return {valid:false,error:'MMSI must be exactly 9 digits'};
+  let cat,mid;
+  if(s.startsWith('111')){cat='SAR aircraft';mid=s.slice(3,6);}
+  else if(s.startsWith('00')){cat='Coast station';mid=s.slice(2,5);}
+  else if(s.startsWith('0')){cat='Group of ships';mid=s.slice(1,4);}
+  else if(s.startsWith('99')){cat='Aid to navigation (AtoN)';mid=s.slice(2,5);}
+  else if(s.startsWith('98')){cat='Craft w/ parent ship';mid=s.slice(2,5);}
+  else if(s.startsWith('8')){return {valid:true,mmsi:s,category:'Handheld VHF/DSC',mid:'-',country:'(no national MID)'};}
+  else {cat='Ship station';mid=s.slice(0,3);}
+  return {valid:true,mmsi:s,category:cat,mid,country:midCountry(mid)};
+}
+const SELCALL={
+ 'CCIR (100 ms)':{0:1981,1:1124,2:1197,3:1275,4:1358,5:1446,6:1540,7:1640,8:1747,9:1860,'Repeat':2400},
+ 'ZVEI1 (70 ms)':{0:2400,1:1060,2:1160,3:1270,4:1400,5:1530,6:1670,7:1830,8:2000,9:2200,'Repeat':2600},
+ 'EEA (40 ms)':{0:1981,1:1124,2:1197,3:1275,4:1358,5:1446,6:1540,7:1640,8:1747,9:1860,'Repeat':2400} };
+const SELCAL16={A:312.6,B:346.7,C:384.6,D:426.6,E:473.2,F:524.8,G:582.1,H:645.7,J:716.1,K:794.3,L:881.0,M:977.2,P:1083.9,Q:1202.3,R:1333.5,S:1479.1};
+const ALE_HFN={ '160m':[1996.0],'80m':[3596.0],'60m':[5357.0],'40m':[7102.0,7185.5],'30m':[10145.5],'20m':[14109.0],
+ '17m':[18106.0],'15m':[21096.0],'12m':[24926.0],'10m':[28146.0],'6m':[50140.0],'2m':[144140.0],'70cm':[432140.0] };
+let toolsDone=false;
+function renderTools(){
+  $('#mmsi-go').onclick=()=>{ const r=mmsiDecode($('#mmsi-in').value); const o=$('#mmsi-out'); o.style.display='';
+    o.innerHTML = r.valid ? `<div class="k">${r.mmsi}</div><div class="small" style="margin-top:4px">Category: <b>${r.category}</b><br>MID: <b>${r.mid}</b> · Country: <b>${esc(r.country)}</b></div>`
+                          : `<div class="small bad">${esc(r.error)}</div>`; };
+  if(toolsDone) return; toolsDone=true;
+  // selcall table: rows = digit/label, cols = systems
+  const sys=Object.keys(SELCALL); const labels=[0,1,2,3,4,5,6,7,8,9,'Repeat'];
+  let h='<thead><tr><th>Digit</th>'+sys.map(s=>`<th>${s}</th>`).join('')+'</tr></thead><tbody>';
+  labels.forEach(d=>{ h+=`<tr><td class="mono">${d}</td>`+sys.map(s=>`<td class="mono">${SELCALL[s][d]}</td>`).join('')+'</tr>'; });
+  h+='</tbody>'; $('#selcall-tbl').innerHTML=h;
+  // aero SELCAL note row appended
+  $('#selcall-tbl').insertAdjacentHTML('afterend','<p class="note">Aeronautical SELCAL (ARINC, 16 tones A–S, no I/N/O), dual-tone pairs ~1 s: '+Object.entries(SELCAL16).map(([k,v])=>k+'='+v).join(', ')+' Hz.</p>');
+  // ALE table
+  let a='<thead><tr><th>Band</th><th>Channels (USB, kHz)</th><th>MHz</th></tr></thead><tbody>';
+  Object.entries(ALE_HFN).forEach(([b,ch])=>{ a+=`<tr><td>${b}</td><td class="mono">${ch.map(f=>f.toFixed(1)).join(', ')}</td><td class="mono">${ch.map(f=>(f/1000).toFixed(4)).join(', ')}</td></tr>`; });
+  a+='</tbody>'; $('#ale-tbl').innerHTML=a;
+}
 
 // ---------- theme ----------
 $('#theme-btn').onclick=()=>{ const cur=document.documentElement.getAttribute('data-theme'); const n=cur==='light'?'':'light';

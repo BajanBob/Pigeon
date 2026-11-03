@@ -33,6 +33,23 @@ over 15+ years, and interoperability matters.
   ocean scatter from oscillator wander. Keep rig drift ≪ fB with a GPSDO/OCXO.
 - The same physics is in `rf/evap_duct.m` and `rf/drift_discriminator.{py,m}`.
 
+## Tools (v1.2)
+- **MMSI decoder** (ITU-R M.585) — validate a 9-digit MMSI, classify its category
+  (ship / coast / group / SAR aircraft / AtoN / handheld) and resolve the MID to a
+  country.
+- **Selcall reference** — the tone tables for **CCIR, ZVEI1, EEA** two-tone-sequential
+  selcall and **aeronautical SELCAL** (ARINC 16-tone), as used by Codan/Barrett/marine
+  HF terminals. Encode/decode is in `rf/selcall.py`.
+- **International ALE channels** — the amateur HFLINK HFN calling channels (160 m–70 cm).
+
+## Radios & CAT control (Hamlib)
+Einstein's desktop helper and the Pigeon RF station drive the rig over **Hamlib**
+(`rigctld`), which supports the modern (2020+) HF/VHF radios: **Icom IC-9100 /
+IC-7300 / IC-7610 / IC-705 / IC-905**, **Yaesu FT-991A / FT-710 / FTdx10** and the
+**FTM-500D / FTM-300D** VHF/UHF mobiles, **Kenwood TS-590SG / TS-890S**, and most
+others. Set `rigctld host:port` in Settings; the helper uses it for frequency and
+PTT. Audio in/out is via the rig's USB codec or a soundcard interface.
+
 ## Planned (desktop helper — needs raw sockets)
 Live capture over **WSJT-X's UDP broadcast**, **rigctld (Hamlib) CAT control** for
 IC-9100 / FT-991A / FT-710 / Yaesu SDRs and other 2020-era rigs, and **PSK Reporter**

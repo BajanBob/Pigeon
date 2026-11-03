@@ -225,6 +225,15 @@ python rf_station.py ale call  --addr 8P6N --dst G4AB --channels 14.1086,18.1060
 ```
 `--mode fsk1` = quick robust beacon (~−8 dB); `--mode homer` = weak-signal (~−21 dB).
 
+### Addressing & interop helpers
+- **`mmsi.py`** — MMSI encode/decode (ITU-R M.585): category + MID→country.
+- **`selcall.py`** — CCIR / ZVEI1 / EEA two-tone-sequential selcall and aeronautical
+  SELCAL (ARINC 16-tone), encode/decode, verified round-trip through noise.
+- **`ale_channels.py`** — international amateur ALE (HFLINK HFN) calling-channel plan.
+
+CAT rig control (frequency/PTT) is via **Hamlib `rigctld`** — supports IC-9100/7300/
+7610/705/905, FT-991A/710/dx10, FTM-500D/300D, TS-590SG/890S and most 2020-era rigs.
+
 ## How it fits Pigeon's two location sources
 
 - **Ham operators** → located by **Maidenhead grid over RF**, clear text, shown via
