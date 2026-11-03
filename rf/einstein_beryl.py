@@ -36,6 +36,14 @@ except ImportError:
 COMMERCIAL_BAND_MHZ = (148.0, 174.0)
 
 
+COMPLIANCE = (
+    "Commercial / EmComm module — 148–174 MHz under the appropriate licence. "
+    "Protecting content (AES) and link robustness (spread spectrum) are allowed; "
+    "operate openly, keep the band gate and station ID on, and confirm your "
+    "licence permits encryption and the mode. Follow your national regulator."
+)
+
+
 def _need_numpy():
     if np is None:
         raise RuntimeError("Beryl needs numpy (pip install numpy)")

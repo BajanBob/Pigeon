@@ -65,3 +65,32 @@ that are **resistant to jamming** (spread-spectrum processing gain), work at
 **without any RF at all** (the ultrasonic link, e.g. across a table at a command
 post). Beryl provides those — within the law, on licensed channels, with station
 ID, and never on the amateur bands.
+
+## Commercial / EmComm compliance
+
+The commercial module is reserved for operation from **148–174 MHz** under the
+appropriate licence. The dividing line is simple: **protecting your content and
+making your link robust is allowed; hiding that a transmission is happening, or
+evading the rules, is not.**
+
+**Allowed (licensed, band-gated, ID'd):**
+- AES-256 confidentiality of message content.
+- Spread spectrum for anti-jam / low-SNR robustness, operating openly.
+- Text chat, voice, data, the ultrasonic link, the VoIP↔RF gateway, EmComm forms.
+
+**Not allowed (even on commercial channels):**
+- Concealing the transmission itself — anything meant to be undetectable or
+  disguised so a monitor can't tell you are transmitting. (Hiding *content* is
+  fine; hiding the *existence* of the signal is not.)
+- Operating outside your authorization, or defeating the 148–174 MHz band gate.
+- Removing or faking station identification; impersonating another station.
+- Jamming or interfering with other licensed users (anti-jam for your own link
+  is fine; denying others is not).
+- Intercepting communications you are not a party to.
+
+**Operator responsibilities:**
+- Confirm your own licence actually permits encryption and the specific mode —
+  not all commercial authorizations do.
+- Keep the band gate (148–174 MHz) and station ID enabled.
+- Follow your national regulator; have any encryption independently reviewed
+  before relying on it for sensitive operations.
