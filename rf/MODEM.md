@@ -26,16 +26,29 @@ VARA ships free with a speed cap and sells a licence that unlocks full speed. Ei
 mirrors the *shape* of that model but keeps everything clear-text and the throttle
 fully visible — there is no DRM and no hidden lock on the air:
 
-| | **Standard (free)** | **Einstein Pro** |
-|---|---|---|
-| Bandwidth | ~1000 Hz | ~2400 Hz (HF) / wider on VHF FM |
-| Constellation | QPSK (2 bits/carrier) | 16-QAM (4 bits/carrier) |
-| FEC | conv r=1/2 K=7, soft Viterbi | conv r=1/2 K=7, soft Viterbi |
-| Airtime | **governed**: 30 s/over, 120 s per 10 min | unlimited |
-| Throughput¹ | ≈ **0.56 kbps** | ≈ **2.7 kbps** |
+| | **Standard (free)** | **Einstein Pro (HF)** | **Einstein Pro — VHF/FM** |
+|---|---|---|---|
+| Channel | HF/VHF SSB | HF SSB | VHF/UHF **FM** (wideband) |
+| Sample rate | 8 kHz | 8 kHz | 16 kHz |
+| Bandwidth | ~1000 Hz | ~2400 Hz | ~6000 Hz |
+| Constellation | QPSK (2 b/carrier) | 16-QAM (4 b/carrier) | 64-QAM (6 b/carrier) |
+| FEC | conv r=1/2 K=7, soft Viterbi | same | same |
+| Airtime | **governed** 30 s/over, 120 s/10 min | unlimited | unlimited |
+| Throughput¹ | ≈ **0.56 kbps** | ≈ **2.7 kbps** | ≈ **9 kbps usable** (≈14 kbps clean gross) |
+| SNR needed | ~2 dB | ~10 dB | **~25+ dB** (strong local FM link) |
 
-¹ Measured end-to-end on a 70-byte frame including preamble + FEC overhead (see below).
-Real-world payload throughput is lower once ARQ retries and channel fading are included.
+¹ Measured end-to-end including preamble + FEC overhead. Real-world payload throughput is
+lower once ARQ retries and channel conditions are included.
+
+**Why 9 kbps is a VHF number, not an HF one — honest physics.** An HF SSB passband is only
+~2.4–2.7 kHz wide, so no modem reaches 9 kbps on HF regardless of cleverness; VARA HF tops
+out near 7 kbps for the same reason. 9 kbps needs **bandwidth**, which a VHF/UHF FM channel
+provides (VARA FM reaches ~25 kbps on VHF). The **Einstein Pro — VHF/FM** profile uses ~6 kHz
+of FM audio and 64-QAM to hit **≈14 kbps gross on a clean channel** and a realistic
+**≈9 kbps usable** after FEC/ARQ margin. The catch, stated plainly: 64-QAM needs a high-SNR
+link — measured AWGN FER is 0.33 at 22 dB and 0.17 at 26 dB, i.e. you need a **strong local
+VHF/FM path (~25+ dB)**. On a weak or fading link it falls back to the HF Pro / Standard
+profiles. We ship the real SNR cost, not just the headline rate.
 
 The free-tier limit is enforced by a transparent **airtime governor**
 (`AirtimeGovernor` in `einstein_modem.py`): it caps continuous over length and total
@@ -63,9 +76,12 @@ decides *when you may key up* — it never encrypts or obscures anything.
 ## Measured — clean channel (AWGN-free round trip)
 
 ```
-Standard (free) : clean decode OK | 70 B in 1.00 s -> 560 bps,  BW 1000 Hz, QPSK
-Einstein Pro    : clean decode OK | 70 B in 0.21 s -> 2679 bps, BW 2400 Hz, 16-QAM
+Standard (free)           : clean decode OK | 70 B in 1.00 s -> 560 bps  (0.6 kbps), BW 1000 Hz @ 8k,  QPSK
+Einstein Pro (HF)         : clean decode OK | 70 B in 0.21 s -> 2679 bps (2.7 kbps), BW 2400 Hz @ 8k,  16-QAM
+Einstein Pro VHF (9 kbps) : clean decode OK | 800 B in 0.46 s -> 13943 bps (13.9 kbps), BW 6000 Hz @ 16k, 64-QAM
 ```
+
+VHF 64-QAM AWGN FER (honest SNR cost): 1.00 @14 dB · 0.83 @18 dB · 0.33 @22 dB · 0.17 @26 dB.
 
 ## Measured — robustness (FER vs SNR)
 

@@ -16,13 +16,23 @@ drop-in — this is an open Einstein-native modem; see MODEM.md for scope + road
 import numpy as np
 import pigeon_rf2 as rf          # reuse conv_encode + viterbi_soft (r=1/2 K=7, soft)
 
-FS = 8000.0
-FC = 1500.0                      # audio carrier centre
+FS = 8000.0                      # default audio sample rate (HF/SSB profiles)
+FC = 1500.0                      # default audio carrier centre
 
+# Each profile may override fs/fc. HF profiles live in the ~2.4 kHz SSB passband;
+# the VHF profile uses a wideband FM audio channel (higher fs) for 64-QAM.
 PROFILES = {
-  "STANDARD": dict(bw=1000.0, nfft=128, cp=32, bits=2,  pilot_every=4, name="Standard (free)"),
-  "PRO":      dict(bw=2400.0, nfft=128, cp=24, bits=4,  pilot_every=5, name="Einstein Pro"),
+  "STANDARD": dict(bw=1000.0, nfft=128, cp=32, bits=2, pilot_every=4,
+                   fs=8000.0, fc=1500.0, name="Standard (free)"),
+  "PRO":      dict(bw=2400.0, nfft=128, cp=24, bits=4, pilot_every=5,
+                   fs=8000.0, fc=1500.0, name="Einstein Pro (HF)"),
+  # VHF/FM wideband Pro: ~6 kHz audio, 64-QAM, short CP (little multipath on FM).
+  # Needs a high-SNR VHF FM link; targets ~9 kbps. Not for HF SSB (bandwidth-capped).
+  "PRO_VHF":  dict(bw=6000.0, nfft=256, cp=16, bits=6, pilot_every=8,
+                   fs=16000.0, fc=4000.0, name="Einstein Pro VHF (9 kbps)"),
 }
+def _fs(P): return P.get("fs", FS)
+def _fc(P): return P.get("fc", FC)
 
 # ---------- Gray-coded QAM ----------
 def _qam_points(bits):
@@ -57,8 +67,8 @@ def _demap_soft(syms, bits, pts, noise=1.0):
     return np.array(llr)
 
 # ---------- OFDM ----------
-def _used_bins(nfft, bw):
-    span = int(round(bw / (FS/nfft)))               # number of used subcarriers
+def _used_bins(nfft, bw, fs=FS):
+    span = int(round(bw / (fs/nfft)))               # number of used subcarriers
     half = span // 2
     bins = [k for k in range(-half, half+1) if k != 0]   # skip DC
     return bins
@@ -82,14 +92,14 @@ def _ofdm_syms(data_syms, pilots_val, bins, pilot_every, nfft, cp):
         out.append(x)
     return np.concatenate(out), nsym, per, is_pilot, data_bins
 
-def _upconvert(x):
-    t = np.arange(len(x))/FS
-    y = np.real(x * np.exp(2j*np.pi*FC*t))
+def _upconvert(x, fs=FS, fc=FC):
+    t = np.arange(len(x))/fs
+    y = np.real(x * np.exp(2j*np.pi*fc*t))
     return y / (np.max(np.abs(y))+1e-9) * 0.6
 
-def _downconvert(y):
-    t = np.arange(len(y))/FS
-    a = _hilbert(y) * np.exp(-2j*np.pi*FC*t)
+def _downconvert(y, fs=FS, fc=FC):
+    t = np.arange(len(y))/fs
+    a = _hilbert(y) * np.exp(-2j*np.pi*fc*t)
     return a
 def _hilbert(x):
     X=np.fft.fft(x); n=len(x); h=np.zeros(n)
@@ -101,25 +111,25 @@ SYNC_VAL = 1.0+0j
 
 def modulate(data_bytes, profile="STANDARD"):
     P = PROFILES[profile]; nfft, cp, bits = P["nfft"], P["cp"], P["bits"]
-    bins = _used_bins(nfft, P["bw"])
+    fs, fc = _fs(P), _fc(P)
+    bins = _used_bins(nfft, P["bw"], fs)
     # FEC: conv r=1/2 on (len-prefixed) payload
     body = len(data_bytes).to_bytes(2,"big") + data_bytes
     coded = rf.conv_encode(rf._b2bits(body))
     syms, pts = _map(coded, bits)
-    # a leading all-pilot OFDM symbol for sync + channel estimate
-    pre_syms = np.array([])  # all bins become pilots in the preamble
     base, nsym, per, is_pilot, data_bins = _ofdm_syms(syms, SYNC_VAL, bins, P["pilot_every"], nfft, cp)
     # preamble: one OFDM symbol with pilot on EVERY used bin
     Xp = np.zeros(nfft, complex)
     for b in bins: Xp[b % nfft] = SYNC_VAL
     xp = np.fft.ifft(Xp)*nfft; xp = np.concatenate([xp[-cp:], xp])
     full = np.concatenate([xp, base])
-    return _upconvert(full), dict(nsym=nsym, per=per, ncoded=len(coded))
+    return _upconvert(full, fs, fc), dict(nsym=nsym, per=per, ncoded=len(coded))
 
 def demodulate(audio, profile="STANDARD", meta=None):
     P = PROFILES[profile]; nfft, cp, bits = P["nfft"], P["cp"], P["bits"]
-    bins = _used_bins(nfft, P["bw"]); sl = nfft+cp
-    a = _downconvert(np.asarray(audio, float))
+    fs, fc = _fs(P), _fc(P)
+    bins = _used_bins(nfft, P["bw"], fs); sl = nfft+cp
+    a = _downconvert(np.asarray(audio, float), fs, fc)
     def demod_symbol(x):
         x = x[cp:cp+nfft]; return np.fft.fft(x)/nfft
     # preamble -> channel estimate H on used bins
@@ -180,19 +190,20 @@ def throughput_bps(profile, payload_bytes):
     P = PROFILES[profile]
     _, meta = modulate(b"x"*payload_bytes, profile)
     nsym = meta["nsym"]; sl = P["nfft"]+P["cp"]
-    secs = (1+nsym)*sl/FS
+    secs = (1+nsym)*sl/_fs(P)
     return payload_bytes*8/secs, secs
 
 if __name__ == "__main__":
     rng = np.random.default_rng(0)
     msg = b"DE 8P6NH: QTC 1 msg Winlink-style RF email over the Einstein modem. 73"
+    big = (b"Einstein Pro VHF wideband throughput test. "*20)[:800]   # ~800 B realistic frame
+    MODNAME = {2:"QPSK",4:"16-QAM",6:"64-QAM"}
     print("Einstein Modem self-test\n")
-    for prof in ["STANDARD","PRO"]:
-        y, meta = modulate(msg, prof)
-        # clean
+    for prof, payload in [("STANDARD",msg),("PRO",msg),("PRO_VHF",big)]:
+        y, meta = modulate(payload, prof)
         got = demodulate(y, prof, meta)
-        bps, secs = throughput_bps(prof, len(msg))
-        ok = (got==msg)
-        print(f"{PROFILES[prof]['name']:16}: clean decode {'OK' if ok else 'FAIL'} | "
-              f"{len(msg)}B in {secs:.2f}s -> {bps:.0f} bps, BW {PROFILES[prof]['bw']:.0f} Hz, "
-              f"{['','','QPSK','','16-QAM'][PROFILES[prof]['bits']]}")
+        bps, secs = throughput_bps(prof, len(payload))
+        P = PROFILES[prof]
+        print(f"{P['name']:26}: clean decode {'OK' if got==payload else 'FAIL'} | "
+              f"{len(payload)}B in {secs:.2f}s -> {bps:.0f} bps ({bps/1000:.1f} kbps), "
+              f"BW {P['bw']:.0f} Hz @ {_fs(P)/1000:.0f}k, {MODNAME[P['bits']]}")
