@@ -182,6 +182,11 @@ faster symbols, and per-symbol Doppler/Bragg tracking. That's the OSM R&D step.
 - **`evap_duct.m`** — over-water evaporation/surface-duct refractivity model: modified
   refractivity M(z), evaporation duct height, inversion flag, from bulk marine weather.
   Predicts VHF/UHF over-water openings (the same model is built into Einstein).
+- **`neural_receiver.m`** — Deep Learning Toolbox training scaffold for the neural
+  receiver (1-D CNN on per-symbol tone energies), the genuine "AI" enhancement step.
+- **`RECEIVER_ARCHITECTURE.md`** — the recommended MATLAB computing architecture for
+  enhancing the receiver: GPU research/training tier → Coder/GPU Coder/ONNX export →
+  real-time station decoder, with hardware and toolbox guidance.
 
 ## How it fits Pigeon's two location sources
 
