@@ -156,6 +156,20 @@ MODES = [
        baud="31.25", rate="~44 bps", bw_hz=250, mod="8-FSK", coding="conv r=1/2 K=7 + soft Viterbi, CRC",
        enc="clear text", ss=None, snr_db=-10, notes="Einstein weak-signal HF text (rf/einstein_afsk.py)."),
 
+  # ---------------- Commercial / EmComm (Beryl) ----------------
+  dict(id="beryl_lpi", name="Beryl LPI (DSSS)", cat="Commercial / EmComm", kind="data",
+       baud="chip rate", rate="depends on spreading factor", bw_hz=20000,
+       mod="BPSK direct-sequence spread spectrum", coding="PN gain + AES-256-GCM auth",
+       enc="clear/ciphertext (commercial only)", ss="DSSS", snr_db=-9,
+       notes="COMMERCIAL 148–174 MHz ONLY, band-gated, ID required. LPI/anti-jam below "
+             "the noise floor — NOT undetectable. See rf/BERYL.md. Never on amateur bands."),
+  dict(id="beryl_ultra", name="Beryl ultrasonic (data-over-sound)", cat="Commercial / EmComm",
+       kind="data", baud="100", rate="~100 bps", bw_hz=1000,
+       mod="BFSK 18.5/19.5 kHz (near-ultrasound)", coding="CRC-8 + sync preamble",
+       enc="clear/ciphertext", ss=None, snr_db=None,
+       notes="ACOUSTIC, not RF. Short-range (~m) RF-free key/config/message transfer. "
+             "Needs ~20 kHz-capable speaker/mic. Wrap payload with Beryl AES."),
+
   # ---------------- Image / fax ----------------
   dict(id="sstv", name="SSTV (Scottie/Martin/PD/Robot)", cat="Image", kind="image",
        baud="analog", rate="8–270 s/frame", bw_hz=2300, mod="FM subcarrier 1500–2300 Hz in SSB",
