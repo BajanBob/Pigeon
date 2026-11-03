@@ -187,14 +187,25 @@
   <div class="card">
     <h2>Signal analyzer — spectrum &amp; waterfall</h2>
     <p class="small muted">Feed the rig's audio (USB codec / line-in / mic) into this device and watch the band in real time. Works on any band the radio is tuned to — the display is audio‑rate (0–6 kHz of the SSB passband).</p>
+    <p class="note" id="an-freqhelp" style="margin:6px 0">Set a grid in Settings for frequency/mode suggestions.</p>
     <div class="row"><button class="btn go sm" id="an-start">▶ Start</button><button class="btn sm" id="an-stop">⏹ Stop</button><span class="small muted" id="an-state" style="align-self:center">stopped</span></div>
-    <canvas id="an-spec" width="800" height="150" style="width:100%;height:110px;background:#060b10;border:1px solid var(--line);border-radius:10px;margin-top:10px"></canvas>
-    <canvas id="an-fall" width="800" height="240" style="width:100%;height:200px;background:#060b10;border:1px solid var(--line);border-radius:10px;margin-top:8px"></canvas>
-    <div class="grid3" style="margin-top:10px">
-      <div class="stat"><div class="k">Peak tone</div><div class="v" id="an-peak" style="font-size:18px">—</div></div>
-      <div class="stat"><div class="k">Peak level</div><div class="v" id="an-lvl" style="font-size:18px">—</div></div>
-      <div class="stat"><div class="k">Est. SNR</div><div class="v" id="an-snr" style="font-size:18px">—</div></div>
+    <div class="row" style="margin-top:8px;gap:16px;flex-wrap:wrap;align-items:center">
+      <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="an-integ"> <b>Integrate</b> — stack spectra to dig below the noise</label>
+      <label class="small" style="display:flex;gap:6px;align-items:center">time <input id="an-integs" type="range" min="1" max="30" value="8" style="width:90px"><span id="an-integv" style="min-width:34px">8 s</span></label>
+      <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="an-hold"> Peak hold</label>
+      <button class="btn sm" id="an-reset">Reset avg</button>
     </div>
+    <canvas id="an-spec" width="1200" height="180" style="width:100%;height:120px;background:#060b10;border:1px solid var(--line);border-radius:10px;margin-top:10px"></canvas>
+    <canvas id="an-fall" width="1200" height="260" style="width:100%;height:200px;background:#060b10;border:1px solid var(--line);border-radius:10px;margin-top:8px"></canvas>
+    <div class="grid3" style="margin-top:10px">
+      <div class="stat"><div class="k">Peak tone (fine)</div><div class="v" id="an-peak" style="font-size:18px">—</div></div>
+      <div class="stat"><div class="k">Peak level</div><div class="v" id="an-lvl" style="font-size:18px">—</div></div>
+      <div class="stat"><div class="k">SNR over floor</div><div class="v" id="an-snr" style="font-size:18px">—</div></div>
+      <div class="stat"><div class="k">Signal ID (best guess)</div><div class="v" id="an-id" style="font-size:15px">—</div></div>
+      <div class="stat"><div class="k">Bandwidth</div><div class="v" id="an-bw" style="font-size:18px">—</div></div>
+      <div class="stat"><div class="k">Noise floor</div><div class="v" id="an-nf" style="font-size:18px">—</div></div>
+    </div>
+    <p class="note" style="margin-top:8px"><b>Deep analysis:</b> turn on <b>Integrate</b> and a steady carrier climbs out of the noise as the random noise averages down — a weak beacon or het can surface several dB under the ear's threshold. <b>Signal ID</b> is an honest best-guess from the spectral shape (carrier/CW, two-tone FSK, multi-tone digital like FT8, or SSB voice), not a decoder. The green trace is live; the amber line is the integrated/peak-hold spectrum.</p>
   </div>
 </section>
 
@@ -270,6 +281,7 @@
       and predicts a workable-path likelihood by distance band. <b>Honest by design:</b> 2 m/70 cm do not
       propagate thousands of miles by these mechanisms — long bands are capped at the documented physical
       ceiling and reported near zero.</p>
+    <p class="note" id="ssp-freqhelp" style="margin:6px 0">Set a grid in Settings for frequency/mode suggestions.</p>
     <div class="grid2">
       <div><label>From grid</label><input id="ssp-a" type="text" placeholder="FK52" autocapitalize="characters"></div>
       <div><label>To grid</label><input id="ssp-b" type="text" placeholder="GK03" autocapitalize="characters"></div>
@@ -804,30 +816,117 @@ async function micSource(){ if(!audioCtx) audioCtx=new (window.AudioContext||win
   const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
   return {stream, src:audioCtx.createMediaStreamSource(stream)}; }
 
-// ---------- Signal analyzer: spectrum + waterfall ----------
-let anRun=false, anRAF=null, anStream=null;
+// ---------- Frequency / mode helper (from grid → IARU region) ----------
+function regionFreqs(){
+  const g=(LS.get('e-mygrid','')||'').trim().toUpperCase();
+  let lon=null; try{ const ll=SSP.grid2ll(g); lon=Array.isArray(ll)?ll[1]:ll.lon; }catch(e){}
+  let R='2', set={vft:'144.174',vssb:'144.200',vmsk:'144.150',uft:'432.174',ussb:'432.100'};
+  if(lon!==null){
+    if(lon>-30&&lon<60){ R='1'; set={vft:'144.174',vssb:'144.300',vmsk:'144.360',uft:'432.174',ussb:'432.200'}; }
+    else if(lon>=60||lon<=-170){ R='3'; set={vft:'144.174',vssb:'144.100',vmsk:'144.230',uft:'432.174',ussb:'432.100'}; }
+  }
+  return {R,set,have:lon!==null};
+}
+function freqHelpText(){
+  const {R,set,have}=regionFreqs();
+  const pre = have?`IARU Region ${R}`:'Default (set grid in Settings)';
+  return `<b>${pre}</b> — <b>2 m:</b> FT8 ${set.vft} · SSB ${set.vssb} · MSK144 ${set.vmsk} &nbsp;|&nbsp; `+
+         `<b>70 cm:</b> FT8 ${set.uft} · SSB ${set.ussb}. Use <b>USB‑D (DATA‑USB)</b> for 2 m/70 cm detection — not FM. `+
+         `FT8 digs deepest below the noise; verify your national band plan.`;
+}
+function refreshFreqHelp(){ const a=$('#an-freqhelp'); if(a) a.innerHTML=freqHelpText();
+  const s=$('#ssp-freqhelp'); if(s) s.innerHTML='<b>Confirm an SSP opening on-air:</b> '+freqHelpText(); }
+refreshFreqHelp();
+
+// ---------- Signal classifier (honest best-guess from spectral shape) ----------
+function classifySpectrum(pdB, binHz, floorDb){
+  // pdB: array of per-bin dB over the audio passband; floorDb: noise floor dB.
+  const thr=floorDb+6;                      // 6 dB over floor counts as signal
+  const n=pdB.length, lo=Math.round(300/binHz), hi=Math.min(n,Math.round(2800/binHz));
+  let peaks=[], i=lo;
+  while(i<hi){ if(pdB[i]>thr){ let j=i; while(j<hi&&pdB[j]>thr)j++;
+      let bp=i,bv=pdB[i]; for(let k=i;k<j;k++) if(pdB[k]>bv){bv=pdB[k];bp=k;}
+      peaks.push({lo:i,hi:j,bw:(j-i)*binHz,bin:bp,db:bv}); i=j; } else i++; }
+  if(!peaks.length) return {id:'Noise floor only',conf:0,bw:0};
+  const occ=peaks.reduce((s,p)=>s+p.bw,0);          // total occupied bandwidth
+  const byBin=peaks.slice().sort((a,b)=>a.bin-b.bin);
+  const span=(byBin[byBin.length-1].bin-byBin[0].bin)*binHz;  // first→last peak extent
+  const fill=occ/Math.max(span,binHz);              // contiguous (voice) vs comb (digital)
+  const bws=peaks.map(p=>p.bw).sort((a,b)=>a-b), medBw=bws[Math.floor(bws.length/2)];
+  peaks.sort((a,b)=>b.db-a.db); const top=peaks[0], nPk=peaks.length;
+  // two strong narrow tones 120–1200 Hz apart → FSK / RTTY
+  if(nPk===2&&peaks[1].db>floorDb+9){
+    const shift=Math.abs(peaks[0].bin-peaks[1].bin)*binHz;
+    if(shift>120&&shift<1200&&top.bw<120) return {id:`FSK / RTTY (shift ≈${Math.round(shift)} Hz)`,conf:0.6,bw:shift};
+  }
+  // one narrow steady peak → carrier / CW
+  if(nPk<=2&&top.bw<60) return {id:'Carrier / CW (narrow)',conf:0.65,bw:top.bw};
+  // broad continuous energy filling the voice band → SSB voice
+  if(span>1500&&fill>0.45) return {id:'SSB voice / wide signal',conf:0.5,bw:Math.round(span)};
+  // several narrow tones as a comb over the band → multi-tone digital (FT8/FT4/Q65)
+  if(nPk>=3&&medBw<120&&span>120) return {id:'Multi-tone digital (FT8/FT4/Q65?)',conf:0.5,bw:Math.round(span)};
+  if(occ>1200) return {id:'SSB voice / wide signal',conf:0.4,bw:Math.round(occ)};
+  return {id:'Signal present (unclassified)',conf:0.3,bw:Math.round(occ)};
+}
+
+// ---------- Signal analyzer: spectrum + waterfall + deep analysis ----------
+let anRun=false, anRAF=null, anStream=null, anAvg=null, anHold=null;
+$('#an-integs')&&($('#an-integs').oninput=()=>$('#an-integv').textContent=$('#an-integs').value+' s');
+$('#an-reset')&&($('#an-reset').onclick=()=>{ anAvg=null; anHold=null; });
+$('#an-integ')&&($('#an-integ').onchange=()=>{ anAvg=null; });
 async function startAnalyzer(){ if(anRun) return;
   try{ const {stream,src}=await micSource(); anStream=stream;
-    const an=audioCtx.createAnalyser(); an.fftSize=2048; src.connect(an);
-    const bins=an.frequencyBinCount, data=new Uint8Array(bins);
+    const an=audioCtx.createAnalyser(); an.fftSize=8192; an.smoothingTimeConstant=0;
+    an.minDecibels=-115; an.maxDecibels=-15; src.connect(an);
+    const bins=an.frequencyBinCount, fdata=new Float32Array(bins);
     const spec=$('#an-spec'), sx=spec.getContext('2d'), fall=$('#an-fall'), fx=fall.getContext('2d');
-    const nyq=audioCtx.sampleRate/2, maxHz=6000, maxBin=Math.min(bins, Math.round(maxHz/nyq*bins));
-    anRun=true; $('#an-state').textContent='running'; $('#an-start').classList.add('on');
-    const draw=()=>{ if(!anRun) return; an.getByteFrequencyData(data);
+    const nyq=audioCtx.sampleRate/2, binHz=nyq/bins, maxHz=6000, maxBin=Math.min(bins, Math.round(maxHz/nyq*bins));
+    const DBMIN=-115, DBMAX=-15, span=DBMAX-DBMIN, y=db=>spec.height-((Math.max(DBMIN,Math.min(DBMAX,db))-DBMIN)/span)*spec.height;
+    anRun=true; $('#an-state').textContent='running'; $('#an-start').classList.add('on'); anAvg=null; anHold=null;
+    const draw=()=>{ if(!anRun) return; an.getFloatFrequencyData(fdata);
       const acc=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#66e0ff';
       const night=window.isNight;
-      sx.clearRect(0,0,spec.width,spec.height); sx.strokeStyle=acc; sx.beginPath();
-      let peak=0,pk=0,sum=0; for(let i=0;i<maxBin;i++){ const v=data[i]; sum+=v; if(v>peak){peak=v;pk=i;}
-        const x=i/maxBin*spec.width, y=spec.height-(v/255)*spec.height; i?sx.lineTo(x,y):sx.moveTo(x,y); }
+      const integ=$('#an-integ')&&$('#an-integ').checked, hold=$('#an-hold')&&$('#an-hold').checked;
+      const secs=+($('#an-integs')?$('#an-integs').value:8), a=Math.min(1,Math.max(0.01,1/(secs*30)));
+      // linear power + exponential integration
+      if(!anAvg||anAvg.length!==maxBin){ anAvg=new Float32Array(maxBin); for(let i=0;i<maxBin;i++)anAvg[i]=Math.pow(10,(isFinite(fdata[i])?fdata[i]:DBMIN)/10); }
+      if(!anHold||anHold.length!==maxBin){ anHold=new Float32Array(maxBin).fill(DBMIN); }
+      const disp=new Float32Array(maxBin);
+      for(let i=0;i<maxBin;i++){ const lin=Math.pow(10,(isFinite(fdata[i])?fdata[i]:DBMIN)/10);
+        anAvg[i]=(1-a)*anAvg[i]+a*lin;
+        const dB = integ ? 10*Math.log10(anAvg[i]+1e-20) : (isFinite(fdata[i])?fdata[i]:DBMIN);
+        disp[i]=dB; if(dB>anHold[i])anHold[i]=dB; }
+      // robust noise floor = median of in-band bins
+      const lo=Math.round(250/binHz), hi=Math.min(maxBin,Math.round(2900/binHz));
+      const srt=Array.prototype.slice.call(disp.subarray(lo,hi)).sort((x,z)=>x-z);
+      const floorDb= srt.length?srt[Math.floor(srt.length/2)]:DBMIN;
+      // peak + parabolic sub-bin interpolation
+      let pk=lo,pv=disp[lo]; for(let i=lo;i<hi;i++) if(disp[i]>pv){pv=disp[i];pk=i;}
+      let frac=0; if(pk>0&&pk<maxBin-1){ const a0=disp[pk-1],a1=disp[pk],a2=disp[pk+1],d=(a0-2*a1+a2); if(d!==0)frac=0.5*(a0-a2)/d; }
+      const peakHz=(pk+frac)*binHz, snr=pv-floorDb;
+      // draw spectrum: live (accent) + integrated/hold (amber)
+      sx.clearRect(0,0,spec.width,spec.height);
+      sx.strokeStyle=acc; sx.lineWidth=1; sx.beginPath();
+      for(let i=0;i<maxBin;i++){ const x=i/maxBin*spec.width; const dB=integ?10*Math.log10(Math.pow(10,(isFinite(fdata[i])?fdata[i]:DBMIN)/10)+1e-20):disp[i]; i?sx.lineTo(x,y(dB)):sx.moveTo(x,y(dB)); }
       sx.stroke();
-      // waterfall scroll — red palette in Night (NVG-safe), blue→cyan otherwise
+      if(integ||hold){ sx.strokeStyle='#ffb020'; sx.beginPath();
+        for(let i=0;i<maxBin;i++){ const x=i/maxBin*spec.width; const v=hold?anHold[i]:disp[i]; i?sx.lineTo(x,y(v)):sx.moveTo(x,y(v)); } sx.stroke(); }
+      // noise-floor guide
+      sx.strokeStyle='rgba(150,170,190,.35)'; sx.setLineDash([4,4]); sx.beginPath(); sx.moveTo(0,y(floorDb)); sx.lineTo(spec.width,y(floorDb)); sx.stroke(); sx.setLineDash([]);
+      // waterfall scroll (map dB over floor → colour)
       const img=fx.getImageData(0,0,fall.width,fall.height); fx.putImageData(img,0,1);
-      for(let x=0;x<fall.width;x++){ const i=Math.floor(x/fall.width*maxBin); const v=data[i];
+      for(let x=0;x<fall.width;x++){ const i=Math.floor(x/fall.width*maxBin); const v=Math.max(0,Math.min(60,disp[i]-floorDb))*4;
         fx.fillStyle = night ? `hsl(0,95%,${Math.min(55,v/4)}%)` : `hsl(${200-v},90%,${Math.min(60,v/3)}%)`;
         fx.fillRect(x,0,1,1); }
-      const peakHz=Math.round(pk/bins*nyq); const mean=sum/maxBin;
-      const snr=peak>0?Math.round(20*Math.log10((peak+1)/(mean+1))):0;
-      $('#an-peak').textContent=peakHz+' Hz'; $('#an-lvl').textContent=Math.round(peak/255*100)+'%'; $('#an-snr').textContent=snr+' dB';
+      // classify + readouts
+      const cls=classifySpectrum(disp,binHz,floorDb);
+      const lvlPct=Math.round(((Math.max(DBMIN,Math.min(DBMAX,pv))-DBMIN)/span)*100);
+      $('#an-peak').textContent=(snr>3?peakHz.toFixed(1):'—')+(snr>3?' Hz':'');
+      $('#an-lvl').textContent=lvlPct+'%';
+      $('#an-snr').textContent=Math.round(snr)+' dB'+(integ?' (int)':'');
+      $('#an-id').textContent=cls.id;
+      $('#an-bw').textContent=cls.bw?Math.round(cls.bw)+' Hz':'—';
+      $('#an-nf').textContent=Math.round(floorDb)+' dBFS';
       anRAF=requestAnimationFrame(draw); };
     draw();
   }catch(e){ $('#an-state').textContent='mic/line-in blocked'; }
@@ -980,7 +1079,7 @@ $('#save-settings').onclick=()=>{ const gv=$('#my-grid').value.trim().toUpperCas
   LS.set('e-ptt',$('#set-ptt').value.trim()); LS.set('e-civ',$('#set-civ').value.trim());
   LS.set('e-catbaud',$('#set-catbaud').value.trim()); LS.set('e-catport',$('#set-catport').value.trim());
   LS.set('e-audio',$('#set-audio').value.trim());
-  $('#set-msg').textContent='Saved ✓'; setupReqMark(); setTimeout(()=>$('#set-msg').textContent='',1500); };
+  $('#set-msg').textContent='Saved ✓'; setupReqMark(); if(typeof refreshFreqHelp==='function')refreshFreqHelp(); setTimeout(()=>$('#set-msg').textContent='',1500); };
 
 // ---------- new entry ----------
 function utcNow(){ return new Date().toISOString().slice(0,19).replace('T',' '); }

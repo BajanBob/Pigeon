@@ -161,6 +161,68 @@ def analyze(audio, rate=48000, passband=(300.0, 2700.0)):
             "passband": passband}
 
 
+def classify(audio, rate=48000, passband=(300.0, 2800.0)):
+    """Honest best-guess of what's in the passband from its spectral shape —
+    carrier/CW, FSK/RTTY, multi-tone digital (FT8/FT4/Q65), or SSB voice.
+    Mirrors the app's Analyzer classifier. Not a decoder."""
+    _need_numpy()
+    x = np.asarray(audio, dtype=np.float64).reshape(-1)
+    if len(x) < 2048:
+        return {"id": "too few samples", "conf": 0.0, "bw_hz": 0}
+    x = (x - x.mean())
+    nfft = 8192
+    win = np.hanning(nfft)
+    step = nfft // 2
+    acc = np.zeros(nfft // 2 + 1); cnt = 0
+    for i in range(0, len(x) - nfft, step):
+        acc += np.abs(np.fft.rfft(x[i:i + nfft] * win)) ** 2; cnt += 1
+    if cnt == 0:
+        seg = np.zeros(nfft); seg[:min(len(x), nfft)] = x[:nfft]
+        acc = np.abs(np.fft.rfft(seg * win)) ** 2; cnt = 1
+    psd = acc / cnt
+    freqs = np.fft.rfftfreq(nfft, 1.0 / rate)
+    binhz = freqs[1] - freqs[0]
+    lo = int(passband[0] / binhz); hi = min(len(psd), int(passband[1] / binhz))
+    pdb = 10 * np.log10(psd[lo:hi] + 1e-20)
+    floor = float(np.median(pdb))
+    thr = floor + 6.0
+    # contiguous runs above threshold = peaks
+    above = pdb > thr
+    peaks = []
+    i = 0
+    while i < len(above):
+        if above[i]:
+            j = i
+            while j < len(above) and above[j]:
+                j += 1
+            seg = pdb[i:j]
+            peaks.append({"lo": i, "hi": j, "bw": (j - i) * binhz,
+                          "bin": i + int(np.argmax(seg)), "db": float(seg.max())})
+            i = j
+        else:
+            i += 1
+    if not peaks:
+        return {"id": "Noise floor only", "conf": 0.0, "bw_hz": 0, "floor_db": round(floor, 1)}
+    occ = sum(p["bw"] for p in peaks)
+    byb = sorted(peaks, key=lambda p: p["bin"])
+    span = (byb[-1]["bin"] - byb[0]["bin"]) * binhz
+    fill = occ / max(span, binhz)
+    medbw = sorted(p["bw"] for p in peaks)[len(peaks) // 2]
+    top = max(peaks, key=lambda p: p["db"]); npk = len(peaks)
+    out = {"conf": 0.3, "floor_db": round(floor, 1), "n_peaks": npk}
+    if npk == 2 and sorted(peaks, key=lambda p: -p["db"])[1]["db"] > floor + 9:
+        shift = abs(peaks[0]["bin"] - peaks[1]["bin"]) * binhz
+        if 120 < shift < 1200 and top["bw"] < 120:
+            out.update(id=f"FSK / RTTY (shift ~{int(shift)} Hz)", conf=0.6, bw_hz=int(shift)); return out
+    if npk <= 2 and top["bw"] < 60:
+        out.update(id="Carrier / CW (narrow)", conf=0.65, bw_hz=int(top["bw"])); return out
+    if span > 1500 and fill > 0.45:
+        out.update(id="SSB voice / wide signal", conf=0.5, bw_hz=int(span)); return out
+    if npk >= 3 and medbw < 120 and span > 120:
+        out.update(id="Multi-tone digital (FT8/FT4/Q65?)", conf=0.5, bw_hz=int(span)); return out
+    out.update(id="Signal present (unclassified)", bw_hz=int(occ)); return out
+
+
 def measured_offset_hz(audio, rate, expected_hz):
     """Fine frequency of the dominant tone near expected_hz — feeds the
     drift / sea-Bragg-Doppler discriminator (rf/drift_discriminator.py)."""
@@ -232,9 +294,12 @@ def _selftest():
     sig = 0.3 * np.sin(2 * np.pi * 1500 * t) + 0.02 * np.random.randn(len(t))
     r = analyze(sig, rate)
     off = measured_offset_hz(sig, rate, 1500.0)
+    cls = classify(sig, rate)
     print("analyze():", {k: r[k] for k in ("peak_hz", "snr_db", "noise_floor_db", "rms")})
     print("measured_offset_hz(1500):", off)
-    ok = abs(r["peak_hz"] - 1500) < 15 and r["snr_db"] > 10 and abs(off["offset_hz"]) < 2
+    print("classify():", cls["id"], f"(conf {cls['conf']})")
+    ok = (abs(r["peak_hz"] - 1500) < 15 and r["snr_db"] > 10 and abs(off["offset_hz"]) < 2
+          and "Carrier" in cls["id"])
     print("einstein_audio self-test", "OK" if ok else "FAILED")
     return 0 if ok else 1
 
@@ -257,7 +322,8 @@ def main(argv):
         print(f"capturing {secs}s from {dev or 'default'} @ {rate} Hz…")
         a = capture(secs, device=dev, rate=rate)
         import json
-        print(json.dumps(analyze(a, rate), indent=2))
+        res = analyze(a, rate); res["signal_id"] = classify(a, rate)
+        print(json.dumps(res, indent=2))
         return 0
     print(__doc__)
     return 0
