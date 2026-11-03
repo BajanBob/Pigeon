@@ -187,6 +187,43 @@ faster symbols, and per-symbol Doppler/Bragg tracking. That's the OSM R&D step.
 - **`RECEIVER_ARCHITECTURE.md`** — the recommended MATLAB computing architecture for
   enhancing the receiver: GPU research/training tier → Coder/GPU Coder/ONNX export →
   real-time station decoder, with hardware and toolbox guidance.
+- **`neural_receiver_compare.py`** — measured neural-vs-classical detector. HONEST
+  finding: a per-symbol neural net does **not** beat the classical max-log rule
+  (max-log is near-optimal for non-coherent FSK); the neural win needs a **sequence
+  model** exploiting correlated fading / drift / impulsive noise. The guardrail that
+  stops you shipping a neural RX that isn't actually better.
+
+## Link layer — Selcal · Beacon · ALE (Barrett-4050-inspired)
+
+`pigeon_ale.py` adds a **clear-text** (ham-legal) link layer over the HOMER waveform,
+borrowing the operational concepts of a commercial HF terminal:
+
+- **Selcal** — selective calling: frames carry a 4-char address; only the called
+  station answers.
+- **Beacon / sounding** — periodic transmissions peers use to score link quality (LQA).
+- **ALE** — Automatic Link Establishment: scan channels, sound, keep an LQA table, then
+  **call on the best channel** and complete a CALL→ACK→LINKED handshake.
+
+Verified end-to-end in `pigeon_ale.py`'s self-test: a frame round-trips through noise,
+sounding builds the LQA table (picks the strongest channel), and the Selcal handshake
+links on it. **Honest scope:** this is Pigeon-native ALE over the Pigeon waveform — it
+is **not** interoperable with a real Barrett/MIL-STD-188-141 2G ALE radio (that needs
+the standardized 8-FSK ALE waveform + Golay FEC); interoperable 2G ALE is a separate,
+larger build.
+
+## Station — TX & RX, all modes, HF + VHF
+
+`rf_station.py` runs the radio from a PC (soundcard interface) and does **both TX and
+RX** for **all modes** on **HF and VHF** (the waveform is audio into SSB, so the band
+is just where you tune):
+
+```bash
+python rf_station.py --mode homer tx 8P6ABC GK03ec --relay https://…workers.dev
+python rf_station.py --mode homer rx --relay https://…workers.dev
+python rf_station.py ale sound --addr 8P6N --channels 14.1086,18.1060,144.174
+python rf_station.py ale call  --addr 8P6N --dst G4AB --channels 14.1086,18.1060,144.174
+```
+`--mode fsk1` = quick robust beacon (~−8 dB); `--mode homer` = weak-signal (~−21 dB).
 
 ## How it fits Pigeon's two location sources
 
