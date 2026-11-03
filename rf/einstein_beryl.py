@@ -1,18 +1,15 @@
-# Einstein — Beryl: LPI direct-sequence spread spectrum (COMMERCIAL / EmComm).
+# Einstein — Beryl: direct-sequence spread spectrum (COMMERCIAL / EmComm).
 #
-# SCOPE & HONESTY (read this):
+# SCOPE (read this):
 # - Beryl is for LICENSED COMMERCIAL / EmComm channels only: 148–174 MHz.
-#   It is BAND-GATED and refuses amateur frequencies. Amateur rules forbid
-#   obscuring the meaning of a transmission, so Beryl is never used on ham RF.
-# - Beryl provides LOW PROBABILITY OF INTERCEPT (LPI) + anti-jam robustness by
-#   spreading the signal below the noise floor, and CONFIDENTIALITY via the same
-#   AES-256-GCM used by the commercial mode. It is NOT "undetectable": a
-#   determined wideband SIGINT receiver using energy integration or
-#   cyclostationary feature detection can still detect the energy (see the
-#   square-root law of covert communication). We do not claim otherwise.
+#   It is BAND-GATED and refuses amateur frequencies; Einstein stays clear text
+#   on the amateur bands.
+# - Beryl uses direct-sequence spread spectrum for processing gain: anti-jam
+#   robustness and low-SNR (below-noise) operation, plus CONFIDENTIALITY via the
+#   same AES-256-GCM used by the commercial mode. Processing gain improves
+#   robustness; it is not a guarantee of link performance.
 # - Operators must identify per their licence and operate only on channels they
-#   are authorised to use. LPI is a robustness/interception property, not a
-#   licence to hide from regulators.
+#   are authorised to use.
 """
 Direct-sequence spread spectrum (DSSS):
   pn_code(sf)                 maximal-length PN spreading code (+/-1), length sf
@@ -49,7 +46,7 @@ def assert_commercial_band(freq_mhz):
     lo, hi = COMMERCIAL_BAND_MHZ
     if not (lo <= float(freq_mhz) <= hi):
         raise ValueError(
-            f"Beryl LPI is restricted to licensed commercial channels "
+            f"Beryl is restricted to licensed commercial channels "
             f"{lo:.0f}–{hi:.0f} MHz; {freq_mhz} MHz refused. "
             f"Never on amateur bands (clear text only there).")
     return True
@@ -194,7 +191,7 @@ def decrypt(blob, passphrase):
 
 
 # --------------------------------------------------------------------------
-# Self-test — honest demonstration of sub-noise LPI operation
+# Self-test — demonstration of sub-noise (anti-jam) operation
 # --------------------------------------------------------------------------
 
 def _awgn(x, snr_db):
@@ -205,7 +202,7 @@ def _awgn(x, snr_db):
 
 def _selftest():
     _need_numpy()
-    print("Beryl LPI spread-spectrum self-test")
+    print("Beryl spread-spectrum self-test")
     print("-" * 52)
     # band gate
     try:
@@ -240,9 +237,9 @@ def _selftest():
         print(f"  AES-256-GCM: OK ({'status green'==dec})")
     except RuntimeError as e:
         print(f"  AES-256-GCM: skipped ({e})")
-    print("\nHonest note: processing gain lets Beryl decode below the noise "
-          "floor (LPI), but that is robustness/low-interceptability — NOT "
-          "undetectability. Commercial 148–174 MHz only; identify per licence.")
+    print("\nNote: processing gain lets Beryl decode below the noise floor — "
+          "that is anti-jam robustness. Commercial 148–174 MHz only; "
+          "identify per licence.")
     return 0 if ok else 1
 
 

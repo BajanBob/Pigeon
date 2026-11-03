@@ -157,12 +157,12 @@ MODES = [
        enc="clear text", ss=None, snr_db=-10, notes="Einstein weak-signal HF text (rf/einstein_afsk.py)."),
 
   # ---------------- Commercial / EmComm (Beryl) ----------------
-  dict(id="beryl_lpi", name="Beryl LPI (DSSS)", cat="Commercial / EmComm", kind="data",
+  dict(id="beryl_lpi", name="Beryl SS (DSSS)", cat="Commercial / EmComm", kind="data",
        baud="chip rate", rate="depends on spreading factor", bw_hz=20000,
        mod="BPSK direct-sequence spread spectrum", coding="PN gain + AES-256-GCM auth",
        enc="clear/ciphertext (commercial only)", ss="DSSS", snr_db=-9,
-       notes="COMMERCIAL 148–174 MHz ONLY, band-gated, ID required. LPI/anti-jam below "
-             "the noise floor — NOT undetectable. See rf/BERYL.md. Never on amateur bands."),
+       notes="COMMERCIAL 148–174 MHz ONLY, band-gated, ID required. Spread-spectrum "
+             "anti-jam, below-noise-floor robustness. See rf/BERYL.md. Never on amateur bands."),
   dict(id="beryl_ultra", name="Beryl ultrasonic (data-over-sound)", cat="Commercial / EmComm",
        kind="data", baud="100", rate="~100 bps", bw_hz=1000,
        mod="BFSK 18.5/19.5 kHz (near-ultrasound)", coding="CRC-8 + sync preamble",

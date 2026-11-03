@@ -24,7 +24,7 @@ CRC-protected, ARQ store-and-forward message layer.
 
 VARA ships free with a speed cap and sells a licence that unlocks full speed. Einstein
 mirrors the *shape* of that model but keeps everything clear-text and the throttle
-fully visible — there is no DRM and no hidden lock on the air:
+fully visible — there is no DRM and no lock on the air:
 
 | | **Standard (free)** | **Einstein Pro (HF)** | **Einstein Pro — VHF/FM** |
 |---|---|---|---|

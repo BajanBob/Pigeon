@@ -164,7 +164,7 @@ class AirtimeGovernor:
     """Free 'Standard' tier is bandwidth- AND airtime-limited, like VARA's free
     speed cap. Pro unlocks full airtime. Clear-text + legal either way; this only
     throttles how much the *free* tier may transmit, it is not a cipher or lock on
-    the air. Config is honest and user-visible (no hidden DRM)."""
+    the air. Config is honest and user-visible (no DRM)."""
     def __init__(self, profile):
         self.profile = profile
         self.max_tx_s = 120.0 if profile=="STANDARD" else float("inf")   # per rolling window

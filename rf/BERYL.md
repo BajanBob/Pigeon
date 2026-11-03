@@ -1,4 +1,4 @@
-# Beryl — LPI spread spectrum + ultrasonic link (COMMERCIAL / EmComm only)
+# Beryl — spread-spectrum link + ultrasonic link (COMMERCIAL / EmComm only)
 
 Beryl is Einstein's **commercial / EmComm** capability set, named for Hurricane
 Beryl. It is **not** an amateur mode and is **band-gated** to licensed
@@ -6,37 +6,28 @@ commercial VHF channels (**148–174 MHz**); it refuses amateur frequencies.
 
 It has two parts:
 
-1. **Beryl LPI** — direct-sequence spread spectrum (DSSS) RF waveform
+1. **Beryl SS** — direct-sequence spread-spectrum (DSSS) RF waveform
    (`rf/einstein_beryl.py`).
 2. **Ultrasonic data-over-sound** — a short-range, RF-free acoustic link
    (`rf/einstein_ultrasound.py`).
 
-## What Beryl is — and what it is not
+## What Beryl does
 
-**It is:**
-- **Low Probability of Intercept (LPI) + anti-jam** by spreading the signal
-  **below the noise floor** (processing gain = 10·log₁₀(spreading factor)).
-  Measured: at a chip SNR of **−9 dB** (signal under the noise), spreading
-  factor 127 → **0 % BER**, 511 → **0 % BER** (Gp ≈ 21 / 27 dB).
-- **Confidential** via **AES-256-GCM** (scrypt-derived key), the same basis as
-  the existing commercial mode. Only on commercial channels.
-- **Band-gated and ID-required:** 148–174 MHz only; stations identify per their
+- **Spread spectrum for processing gain.** Direct-sequence spreading gives
+  **anti-jam robustness** and **low-SNR (below-noise) operation**. Processing
+  gain = 10·log₁₀(spreading factor). Measured: at a chip SNR of **−9 dB**,
+  spreading factor 127 → **0 % BER**, 511 → **0 % BER** (Gp ≈ 21 / 27 dB).
+  Processing gain improves robustness; it is not a guarantee of link performance
+  (real range depends on antennas, terrain, interference and power).
+- **Confidentiality** via **AES-256-GCM** (scrypt-derived key), the same basis
+  as the existing commercial mode. Only on commercial channels.
+- **Band-gated and ID-required.** 148–174 MHz only; stations identify per their
   licence, exactly as the commercial mode already enforces.
+- **Commercial / EmComm only.** It is refused on amateur frequencies; Einstein
+  stays clear-text on the amateur bands. Operate only on channels you are
+  authorised to use.
 
-**It is NOT:**
-- **"Undetectable."** This is the honest line. The **square-root law** of covert
-  communication (Bash, Goeckel & Towsley, 2015) shows truly covert throughput
-  trends to zero and needs a pre-shared secret key; and **cyclostationary
-  feature detection** / energy integration can reveal a structured signal even
-  below the noise floor. A determined wideband SIGINT receiver can still detect
-  Beryl's energy. LPI means *harder to intercept/jam*, not *invisible*.
-- **For amateur use.** Amateur rules forbid obscuring the meaning of a
-  transmission, so neither the spreading-for-concealment nor the encryption is
-  ever used on ham RF. Einstein stays clear-text on the amateur bands.
-- **A licence to hide from regulators.** Operate only on channels you are
-  authorised to use, and identify as your licence requires.
-
-## Beryl LPI (DSSS) — parameters
+## Beryl SS (DSSS) — parameters
 
 | Item | Value |
 |---|---|
@@ -69,7 +60,8 @@ API: `modulate(data)`, `demodulate(audio)`. Self-test:
 ## Why this fits EmComm
 
 In a disaster or hostile RF environment a licensed EmComm operator wants comms
-that are **hard to jam and hard to intercept** (LPI DSSS), **confidential**
-(AES), and that can also move a key or config **without any RF at all** (the
-ultrasonic link, e.g. across a table at a command post). Beryl provides those —
-honestly, within the law, and never on the amateur bands.
+that are **resistant to jamming** (spread-spectrum processing gain), work at
+**low SNR**, are **confidential** (AES), and can also move a key or config
+**without any RF at all** (the ultrasonic link, e.g. across a table at a command
+post). Beryl provides those — within the law, on licensed channels, with station
+ID, and never on the amateur bands.

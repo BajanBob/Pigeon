@@ -9,8 +9,8 @@
 # - This is ACOUSTIC (sound), not RF. Range is a few metres line-of-ear, needs
 #   a speaker/mic that reach ~20 kHz (many laptop/phone parts roll off there),
 #   and ~18–19 kHz is audible to young people and many animals.
-# - It is a convenience/again-air-gap channel, not a covert or secure one by
-#   itself; wrap the payload with Beryl's AES-256-GCM for confidentiality.
+# - It is an air-gapped convenience channel, not a secure one by itself; wrap
+#   the payload with Beryl's AES-256-GCM for confidentiality.
 """
     modulate(data_bytes, fs=48000) -> float32 audio (near-ultrasound BFSK)
     demodulate(audio, fs=48000)    -> data_bytes (or None if no frame found)
